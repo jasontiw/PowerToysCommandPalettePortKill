@@ -17,7 +17,7 @@ env:
   DISPLAY_NAME: ${{ vars.DISPLAY_NAME || 'PortKill' }}
   EXTENSION_NAME: ${{ vars.EXTENSION_NAME || 'PortKill' }}
   FOLDER_NAME: ${{ vars.FOLDER_NAME || 'PortKill' }}
-  GITHUB_REPO_URL: ${{ vars.GITHUB_REPO_URL || 'https://github.com/jasonlyu/PortKill' }}
+  GITHUB_REPO_URL: ${{ vars.GITHUB_REPO_URL || 'https://github.com/jasontiw/PowerToysCommandPalettePortKill' }}
 
 jobs:
   build:
@@ -56,22 +56,22 @@ jobs:
     
     - name: Build EXE installers (x64 and ARM64)
       run: |
-        Set-Location "${{ env.FOLDER_NAME }}/${{ env.FOLDER_NAME }}"
-        .\build-exe.ps1 -Version "${{ steps.version.outputs.VERSION }}" -Platforms @("x64", "arm64") -WindowsPackageType None
+        Set-Location "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}"
+        .\build-exe.ps1 -Version "${{ steps.version.outputs.VERSION }}" -Platforms "x64","arm64" -WindowsPackageType None
       shell: pwsh
     
     - name: Upload x64 installer artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.EXTENSION_NAME }}-x64-installer
-        path: ${{ env.FOLDER_NAME }}/bin/Release/installer/*-x64.exe
+        path: ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/bin/Release/installer/*-x64.exe
         if-no-files-found: error
 
     - name: Upload ARM64 installer artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.EXTENSION_NAME }}-arm64-installer
-        path: ${{ env.FOLDER_NAME }}/bin/Release/installer/*-arm64.exe
+        path: ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/bin/Release/installer/*-arm64.exe
         if-no-files-found: warn
     
     - name: Create GitHub Release
@@ -99,7 +99,7 @@ jobs:
           ## More Information
           
           Repository: ${{ env.GITHUB_REPO_URL }}
-        files: ${{ env.FOLDER_NAME }}/bin/Release/installer/*.exe
+        files: ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/bin/Release/installer/*.exe
         draft: false
         prerelease: false
       env:
