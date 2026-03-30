@@ -22,8 +22,8 @@ internal sealed partial class CommonDevPortsPage : ListPage
     public CommonDevPortsPage()
     {
         Icon = new IconInfo("\uE943"); // Developer tools icon
-        Title = "Common dev ports";
-        Name = "Common dev ports";
+        Title = "Common ports";
+        Name = "Common ports";
     }
 
     /// <inheritdoc/>

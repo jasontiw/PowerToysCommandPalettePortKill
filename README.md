@@ -6,7 +6,7 @@ A Command Palette extension for Microsoft PowerToys that allows developers to qu
 
 - **List Active Ports** - View all TCP/UDP ports currently in use with process information, and kill any process directly
 - **Kill by Process Name** - Kill all processes matching a name (e.g., node, python)
-- **Common Dev Ports** - Quick view of frequently used development ports (3000, 4200, 5000, 5173, 8000, 8080, 9000)
+- **Common ports** - Quick view of frequently used development ports (3000, 4200, 5000, 5173, 8000, 8080, 9000)
 - **Confirmation Dialog** - Shows process details (PID, memory, path, start time) before killing
 - **System Process Protection** - Prevents accidental killing of critical system processes
 - **Dock Integration** - Shows port status in the PowerToys Dock with visual indicators (✓ free, ✗ occupied)
@@ -63,7 +63,7 @@ A Command Palette extension for Microsoft PowerToys that allows developers to qu
 1. Press **Win + Alt + Space** to open Command Palette
 2. Type "Port Kill" to see available commands:
    - **List active ports** - Shows all ports in use, allows killing any process
-   - **Common dev ports** - Quick view of dev ports
+   - **Common ports** - Quick view of dev ports
 
 ### Via Dock
 

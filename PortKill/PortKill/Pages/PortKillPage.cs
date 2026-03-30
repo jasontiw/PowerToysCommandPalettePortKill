@@ -12,7 +12,7 @@ namespace PortKill.Commands;
 
 /// <summary>
 /// Main entry page for the Port Kill extension.
-/// Shows the primary navigation options: list ports and common dev ports.
+/// Shows the primary navigation options: list ports and Common ports.
 /// </summary>
 internal sealed partial class PortKillPage : ListPage
 {
@@ -37,7 +37,7 @@ internal sealed partial class PortKillPage : ListPage
             },
             new ListItem(new CommonDevPortsPage())
             {
-                Title = "Common dev ports",
+                Title = "Common ports",
                 Subtitle = "Quick view of 3000, 4200, 5000, 5173, 8000, 8080, 9000",
                 Icon = new IconInfo("\uE943") // Developer tools icon
             }

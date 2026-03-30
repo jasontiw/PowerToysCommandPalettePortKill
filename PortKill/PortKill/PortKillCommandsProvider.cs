@@ -46,7 +46,7 @@ public sealed partial class PortKillCommandsProvider : CommandProvider
                     },
                     new CommandContextItem(new CommonDevPortsPage())
                     {
-                        Title = "Common dev ports",
+                        Title = "Common ports",
                         Icon = new IconInfo("\uE943")
                     }
                 ]
