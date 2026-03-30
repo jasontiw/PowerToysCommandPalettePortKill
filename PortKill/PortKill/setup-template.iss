@@ -6,7 +6,7 @@
 AppId={{f1172d0c-c4f4-4a1a-9560-e949e8993e17}}
 AppName=PortKill
 AppVersion={#AppVersion}
-AppPublisher=Jason
+AppPublisher=JasonTiw
 DefaultDirName={autopf}\PortKill
 OutputDir=bin\Release\installer
 OutputBaseFilename=PortKill-Setup-{#AppVersion}
