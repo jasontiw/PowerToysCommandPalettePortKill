@@ -155,6 +155,79 @@ Prevents killing critical system processes like:
 - [Extension Samples](https://learn.microsoft.com/en-us/windows/powertoys/command-palette/samples)
 - [PowerToys GitHub](https://github.com/microsoft/PowerToys)
 
+## Publishing to WinGet
+
+This extension can be distributed via WinGet. WinGet enables automatic discovery and installation directly within Command Palette.
+
+### Prerequisites
+
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [Inno Setup 6](https://jrsoftware.org/isdl.php) (for local builds)
+- GitHub CLI (`gh`)
+- [WingetCreate](https://github.com/microsoft/wingetcreate)
+
+### Local Build (Testing)
+
+To build installers locally:
+
+```powershell
+cd PortKill/PortKill
+.\build-exe.ps1 -Version "0.0.1.0"
+```
+
+This creates:
+- `bin\Release\installer\PortKill-Setup-0.0.1.0-x64.exe` (Intel/AMD)
+- `bin\Release\installer\PortKill-Setup-0.0.1.0-arm64.exe` (ARM)
+
+### Automated Build with GitHub Actions
+
+The repository includes `.github/workflows/release-extension.yml` that automatically:
+1. Builds for x64 and ARM64
+2. Creates installers using Inno Setup
+3. Publishes a GitHub Release with the installers
+
+**To trigger a release:**
+
+```powershell
+gh workflow run release-extension.yml -f "release_notes=Your release notes here"
+```
+
+Or manually via GitHub: Actions > Release Extension > Run workflow
+
+### Submitting to WinGet
+
+#### First Submission (Manual)
+
+1. Create a GitHub Release with your installers
+2. Run WingetCreate:
+
+```powershell
+wingetcreate new "path/to/PortKill-Setup-0.0.1.0-x64.exe" "path/to/PortKill-Setup-0.0.1.0-arm64.exe"
+```
+
+3. When prompted:
+   - Press Enter to accept the suggested values
+   - Answer "No" to optional modifications
+   - Answer "Yes" to submit to WinGet
+
+#### Subsequent Updates
+
+Use the included `update-winget.yml` workflow or:
+
+```powershell
+wingetcreate update Your.PackageIdentityName `
+  --version 0.0.2.0 `
+  --urls "https://github.com/yourrepo/releases/download/v0.0.2.0/PortKill-Setup-0.0.2.0-x64.exe|x64" "https://github.com/yourrepo/releases/download/v0.0.2.0/PortKill-Setup-0.0.2.0-arm64.exe|arm64" `
+  --token YOUR_GITHUB_TOKEN \
+  --submit
+```
+
+### WinGet Manifest Requirements
+
+Your manifest must include:
+- `windows-commandpalette-extension` tag for discovery
+- WindowsAppRuntime as a dependency (if using Windows App SDK)
+
 ## License
 
 MIT License - See LICENSE file for details.
