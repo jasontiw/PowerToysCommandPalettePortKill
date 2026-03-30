@@ -1,11 +1,11 @@
-name: CmdPal Extension - Build EXE Installer
+name: CmdPal Extension - Build & Release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number (leave empty to auto-detect)'
-        required: false
+        description: 'Version number'
+        required: true
         type: string
       release_notes:
         description: 'What is new in this version'
@@ -18,9 +18,11 @@ env:
   EXTENSION_NAME: ${{ vars.EXTENSION_NAME || 'PortKill' }}
   FOLDER_NAME: ${{ vars.FOLDER_NAME || 'PortKill' }}
   GITHUB_REPO_URL: ${{ vars.GITHUB_REPO_URL || 'https://github.com/jasontiw/PowerToysCommandPalettePortKill' }}
+  GITHUB_USER: ${{ vars.GITHUB_USER || 'jasontiw' }}
+  PACKAGE_ID: ${{ vars.PACKAGE_ID || 'JasonTiw.PortKill' }}
 
 jobs:
-  build:
+  build-and-release:
     runs-on: windows-2022
     permissions:
       contents: write
@@ -39,48 +41,20 @@ jobs:
       run: choco install innosetup -y --no-progress
       shell: pwsh
     
-    - name: Get version from project
-      id: version
-      run: |
-        if ("${{ github.event.inputs.version }}" -ne "") {
-          $version = "${{ github.event.inputs.version }}"
-        } else {
-          $projectFile = "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}.csproj"
-          $xml = [xml](Get-Content $projectFile)
-          $version = $xml.Project.PropertyGroup.AppxPackageVersion | Select-Object -First 1
-          if (-not $version) { throw "Version not found in project file" }
-        }
-        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-        Write-Host "Using version: $version"
-      shell: pwsh
-    
     - name: Build EXE installers (x64 and ARM64)
       run: |
         Set-Location "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}"
-        .\build-exe.ps1 -Version "${{ steps.version.outputs.VERSION }}" -Platforms "x64","arm64" -WindowsPackageType None
+        .\build-exe.ps1 -Version "${{ github.event.inputs.version }}" -Platforms "x64","arm64" -WindowsPackageType None
       shell: pwsh
     
-    - name: Upload x64 installer artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.EXTENSION_NAME }}-x64-installer
-        path: ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/bin/Release/installer/*-x64.exe
-        if-no-files-found: error
-
-    - name: Upload ARM64 installer artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.EXTENSION_NAME }}-arm64-installer
-        path: ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/bin/Release/installer/*-arm64.exe
-        if-no-files-found: warn
-    
     - name: Create GitHub Release
+      id: release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ env.EXTENSION_NAME }}-v${{ steps.version.outputs.VERSION }}
-        name: "${{ env.DISPLAY_NAME }} v${{ steps.version.outputs.VERSION }}"
+        tag_name: v${{ github.event.inputs.version }}
+        name: "${{ env.DISPLAY_NAME }} v${{ github.event.inputs.version }}"
         body: |
-          ## ${{ env.DISPLAY_NAME }} ${{ steps.version.outputs.VERSION }}
+          ## ${{ env.DISPLAY_NAME }} v${{ github.event.inputs.version }}
           
           ## What's New
           ${{ github.event.inputs.release_notes }}
@@ -89,8 +63,8 @@ jobs:
           
           Download the installer for your system architecture:
           
-          - **x64 (Intel/AMD)**: `${{ env.EXTENSION_NAME }}-Setup-${{ steps.version.outputs.VERSION }}-x64.exe`
-          - **ARM64 (Windows on ARM)**: `${{ env.EXTENSION_NAME }}-Setup-${{ steps.version.outputs.VERSION }}-arm64.exe`
+          - **x64 (Intel/AMD)**: `${{ env.EXTENSION_NAME }}-Setup-${{ github.event.inputs.version }}-x64.exe`
+          - **ARM64 (Windows on ARM)**: `${{ env.EXTENSION_NAME }}-Setup-${{ github.event.inputs.version }}-arm64.exe`
           
           1. Download the appropriate installer from the Assets section below
           2. Run the installer with administrator privileges
@@ -104,3 +78,26 @@ jobs:
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Install wingetcreate
+      run: |
+        iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+      shell: pwsh
+    
+    - name: Update WinGet manifest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $version = "${{ github.event.inputs.version }}"
+        $tag = "v$version"
+        
+        $x64Url = "https://github.com/${{ env.GITHUB_USER }}/${{ env.FOLDER_NAME }}/releases/download/$tag/${{ env.EXTENSION_NAME }}-Setup-$version-x64.exe"
+        $arm64Url = "https://github.com/${{ env.GITHUB_USER }}/${{ env.FOLDER_NAME }}/releases/download/$tag/${{ env.EXTENSION_NAME }}-Setup-$version-arm64.exe"
+        
+        Write-Host "Updating WinGet manifest for version $version"
+        .\wingetcreate.exe update ${{ env.PACKAGE_ID }} `
+          --version $version `
+          --urls "$x64Url|x64" "$arm64Url|arm64" `
+          --token $env:GITHUB_TOKEN `
+          --submit
+      shell: pwsh
