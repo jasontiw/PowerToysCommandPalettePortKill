@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "PortKill (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true
+    },
+    "PortKill (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
