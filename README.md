@@ -164,7 +164,6 @@ This extension can be distributed via WinGet. WinGet enables automatic discovery
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - [Inno Setup 6](https://jrsoftware.org/isdl.php) (for local builds)
 - GitHub CLI (`gh`)
-- [WingetCreate](https://github.com/microsoft/wingetcreate)
 
 ### Local Build (Testing)
 
@@ -172,61 +171,71 @@ To build installers locally:
 
 ```powershell
 cd PortKill/PortKill
-.\build-exe.ps1 -Version "0.0.1.0"
+.\build-exe.ps1 -Version "0.0.1.0" -WindowsPackageType None
 ```
 
 This creates:
 - `bin\Release\installer\PortKill-Setup-0.0.1.0-x64.exe` (Intel/AMD)
 - `bin\Release\installer\PortKill-Setup-0.0.1.0-arm64.exe` (ARM)
 
-### Automated Build with GitHub Actions
+### Release Process (GitHub Actions)
 
 The repository includes `.github/workflows/release-extension.yml` that automatically:
 1. Builds for x64 and ARM64
 2. Creates installers using Inno Setup
 3. Publishes a GitHub Release with the installers
+4. Updates the WinGet manifest (PR in microsoft/winget-pkgs)
 
-**To trigger a release:**
+**To create a new version:**
 
 ```powershell
-gh workflow run release-extension.yml -f "release_notes=Your release notes here"
+gh workflow run release-extension.yml -f version="0.0.1.0" -f release_notes="What's new in this version"
 ```
 
-Or manually via GitHub: Actions > Release Extension > Run workflow
+Or manually via GitHub:
+1. Go to: Actions > Release Extension > Run workflow
+2. Enter version number (e.g., 0.0.2.0)
+3. Add release notes
+4. Click "Run workflow"
 
-### Submitting to WinGet
+**The workflow will:**
+- Build and create the installers
+- Create a GitHub Release
+- Automatically submit/update the WinGet manifest
 
-#### First Submission (Manual)
+### First Time Setup
 
-1. Create a GitHub Release with your installers
-2. Run WingetCreate:
+1. Create initial release and installers locally or via GitHub Actions
+2. Submit to WinGet manually:
 
 ```powershell
 wingetcreate new "path/to/PortKill-Setup-0.0.1.0-x64.exe" "path/to/PortKill-Setup-0.0.1.0-arm64.exe"
 ```
 
-3. When prompted:
-   - Press Enter to accept the suggested values
-   - Answer "No" to optional modifications
-   - Answer "Yes" to submit to WinGet
+When prompted:
+- PackageIdentifier: `JasonTiw.PortKill`
+- Publisher: `JasonTiw`
+- PackageName: `PortKill`
+- Answer "No" to optional modifications
+- Answer "Yes" to submit
 
-#### Subsequent Updates
+3. Accept the CLA in the PR (comment: `@microsoft-github-policy-service agree`)
 
-Use the included `update-winget.yml` workflow or:
+### Subsequent Versions
+
+After the first submission, just run:
 
 ```powershell
-wingetcreate update Your.PackageIdentityName `
-  --version 0.0.2.0 `
-  --urls "https://github.com/yourrepo/releases/download/v0.0.2.0/PortKill-Setup-0.0.2.0-x64.exe|x64" "https://github.com/yourrepo/releases/download/v0.0.2.0/PortKill-Setup-0.0.2.0-arm64.exe|arm64" `
-  --token YOUR_GITHUB_TOKEN \
-  --submit
+gh workflow run release-extension.yml -f version="0.0.2.0" -f release_notes="Bug fixes and improvements"
 ```
+
+The workflow automatically updates the WinGet manifest and creates a PR in microsoft/winget-pkgs.
 
 ### WinGet Manifest Requirements
 
-Your manifest must include:
-- `windows-commandpalette-extension` tag for discovery
-- WindowsAppRuntime as a dependency (if using Windows App SDK)
+The manifest automatically includes:
+- `windows-commandpalette-extension` tag for Command Palette discovery
+- Both x64 and ARM64 architectures
 
 ## License
 

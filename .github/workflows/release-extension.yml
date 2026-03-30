@@ -98,6 +98,7 @@ jobs:
         .\wingetcreate.exe update ${{ env.PACKAGE_ID }} `
           --version $version `
           --urls "$x64Url|x64" "$arm64Url|arm64" `
-          --token $env:GITHUB_TOKEN `
+          --add-tags "windows-commandpalette-extension" `
+          --token ${{ secrets.GITHUB_TOKEN }} `
           --submit
       shell: pwsh
