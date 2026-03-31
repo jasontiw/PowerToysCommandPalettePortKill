@@ -21,7 +21,7 @@ public sealed partial class PortKillCommandsProvider : CommandProvider
     {
         DisplayName = "Port Kill";
         // Using custom PNG icon
-        Icon = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.targetsize-24.png");
+        Icon = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.scale-100.png");
         Id = "com.portkill.provider";
     }
 
@@ -37,13 +37,8 @@ public sealed partial class PortKillCommandsProvider : CommandProvider
                 Title = "Port Kill",
                 Subtitle = "Find and kill processes blocking TCP ports",
                 // Using custom PNG icon
-                Icon = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.targetsize-24.png"),
+                Icon = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.scale-100.png"),
                 MoreCommands = [
-                    new CommandContextItem(new ListPortsPage())
-                    {
-                        Title = "List active ports",
-                        Icon = new IconInfo("\uE7C3")
-                    },
                     new CommandContextItem(new CommonDevPortsPage())
                     {
                         Title = "Common ports",
