@@ -6,6 +6,7 @@
 
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using PortKill.Commands;
 using PortKill.Models;
 using PortKill.Services;
 using System.Collections.Generic;
@@ -54,7 +55,7 @@ internal sealed partial class PortKillPage : ListPage
         {
             return
             [
-                new ListItem(new NoOpCommand())
+                new ListItem(new Microsoft.CommandPalette.Extensions.Toolkit.NoOpCommand())
                 {
                     Title = "No active ports found",
                     Subtitle = "All ports are free or no processes are listening",
@@ -70,97 +71,69 @@ internal sealed partial class PortKillPage : ListPage
             ];
         }
 
-        // Detect sort option from search text
-        var sortOption = DetectSortOption(SearchText);
-        
-        // Apply sorting
-        entries = SortPorts(entries, sortOption);
+        // Deduplicate entries by Port + PID combination
+        entries = entries
+            .GroupBy(e => (e.Port.Port, e.Port.ProcessId))
+            .Select(g => g.First())
+            .ToList();
 
-        // Build the item list
-        var items = new List<IListItem>();
+        // Apply sorting (always use current sort setting - click on sort options updates it)
+        entries = SortPorts(entries, CurrentSort);
 
-        // Add sort options at the top (only when no filter active)
-        if (string.IsNullOrWhiteSpace(SearchText))
-        {
-            items.AddRange(GetSortOptions(sortOption));
-        }
+        // Add port entries (each with Details for the right panel AND kill command in MoreCommands)
+        var items = entries.Select(CreatePortListItem).ToList();
 
-        // Add port entries (each with Details for the right panel)
-        items.AddRange(entries.Select(CreatePortListItem));
-
-        // Keep Common ports option at the bottom
-        items.Add(new ListItem(new CommonDevPortsPage())
-        {
-            Title = "Common ports",
-            Subtitle = "Quick view of 3000, 4200, 5000, 5173, 8000, 8080, 9000",
-            Icon = new IconInfo("\uE943") // Developer tools icon
-        });
+        // Add sort options as footer commands (at the bottom, always visible)
+        items.Add(GetSortOptionsFooter(CurrentSort));
 
         return items.ToArray();
     }
 
     /// <summary>
-    /// Detects the sort option from the search text.
+    /// Creates a footer item with sort options as MoreCommands.
     /// </summary>
-    private static PortSortOption DetectSortOption(string searchText)
+    private static IListItem GetSortOptionsFooter(PortSortOption currentSort)
     {
-        if (string.IsNullOrWhiteSpace(searchText))
-            return CurrentSort;
-
-        // Check if user typed a sort command
-        var lower = searchText.ToLowerInvariant();
-        if (lower.Contains("sort:") || lower.Contains("ordenar:"))
+        var sortCommands = new List<ICommandContextItem>
         {
-            if (lower.Contains("port") && lower.Contains("desc"))
-                return PortSortOption.PortDesc;
-            if (lower.Contains("port"))
-                return PortSortOption.PortAsc;
-            if (lower.Contains("process") || lower.Contains("nombre"))
-                return PortSortOption.ProcessName;
-            if (lower.Contains("memory") && lower.Contains("low"))
-                return PortSortOption.MemoryLow;
-            if (lower.Contains("memory") || lower.Contains("memoria"))
-                return PortSortOption.MemoryHigh;
-        }
-
-        return CurrentSort;
-    }
-
-    /// <summary>
-    /// Returns sort options to display at the top of the list.
-    /// </summary>
-    private static IEnumerable<IListItem> GetSortOptions(PortSortOption currentSort)
-    {
-        // Port ascending
-        yield return new ListItem(new SortCommand(PortSortOption.PortAsc))
-        {
-            Title = "Sort: Port (ascending)",
-            Subtitle = currentSort == PortSortOption.PortAsc ? "✓ Currently selected" : "Click to sort by port number",
-            Icon = new IconInfo("\uE74A") // Sort up icon
+            new CommandContextItem(new SortCommand(PortSortOption.PortAsc))
+            {
+                Title = "Port (asc)",
+                Icon = new IconInfo("\uE74A")
+            },
+            new CommandContextItem(new SortCommand(PortSortOption.PortDesc))
+            {
+                Title = "Port (desc)",
+                Icon = new IconInfo("\uE74B")
+            },
+            new CommandContextItem(new SortCommand(PortSortOption.ProcessName))
+            {
+                Title = "Process name (A-Z)",
+                Icon = new IconInfo("\uE8FD")
+            },
+            new CommandContextItem(new SortCommand(PortSortOption.MemoryHigh))
+            {
+                Title = "Memory (high first)",
+                Icon = new IconInfo("\uE9D9")
+            }
         };
 
-        // Port descending
-        yield return new ListItem(new SortCommand(PortSortOption.PortDesc))
+        var currentSortLabel = CurrentSort switch
         {
-            Title = "Sort: Port (descending)",
-            Subtitle = currentSort == PortSortOption.PortDesc ? "✓ Currently selected" : "Click to sort by port number (highest first)",
-            Icon = new IconInfo("\uE74B") // Sort down icon
+            PortSortOption.PortAsc => "Port ↑",
+            PortSortOption.PortDesc => "Port ↓",
+            PortSortOption.ProcessName => "Name A-Z",
+            PortSortOption.MemoryHigh => "Memory ↓",
+            PortSortOption.MemoryLow => "Memory ↑",
+            _ => "Sort"
         };
 
-        // Process name
-        yield return new ListItem(new SortCommand(PortSortOption.ProcessName))
+        return new ListItem(new Microsoft.CommandPalette.Extensions.Toolkit.NoOpCommand())
         {
-            Title = "Sort: Process name (A-Z)",
-            Subtitle = currentSort == PortSortOption.ProcessName ? "✓ Currently selected" : "Click to sort alphabetically",
-            Icon = new IconInfo("\uE8FD") // Text icon
-        };
-
-        // Memory high
-        yield return new ListItem(new SortCommand(PortSortOption.MemoryHigh))
-        {
-            Title = "Sort: Memory (highest first)",
-            Subtitle = currentSort == PortSortOption.MemoryHigh ? "✓ Currently selected" : "Click to sort by memory usage",
-            Icon = new IconInfo("\uE9D9") // Chart icon
+            Title = $"⚡ Sort: {currentSortLabel}",
+            Subtitle = "Click for more sort options",
+            Icon = new IconInfo("\uE8B3"), // Sort icon
+            MoreCommands = [.. sortCommands]
         };
     }
 
@@ -183,7 +156,8 @@ internal sealed partial class PortKillPage : ListPage
     }
 
     /// <summary>
-    /// Creates a list item for a port entry with Details for the side panel.
+    /// Creates a list item for a port entry with Details for the side panel
+    /// AND kill command directly visible in MoreCommands.
     /// </summary>
     private static IListItem CreatePortListItem(PortProcessEntry entry)
     {
@@ -195,22 +169,31 @@ internal sealed partial class PortKillPage : ListPage
         var state = entry.Port.State;
         var path = entry.Process?.ExecutablePath ?? "N/A";
 
+        // Simplified subtitle - avoid redundancy with title
         var subtitle = entry.IsSystemProcess
-            ? $"Port {port} ({protocol}) — {processName} (PID {pid}) — SYSTEM PROCESS"
-            : $"Port {port} ({protocol}) — {processName} (PID {pid}) — {memory} MB";
+            ? $"PID {pid} | {memory} MB | SYSTEM PROCESS"
+            : $"PID {pid} | {memory} MB";
 
         // Icon based on process type
         var icon = entry.IsSystemProcess
             ? new IconInfo("\uE7BA")  // Shield for system
             : new IconInfo("\uE74D"); // Delete for user processes
 
-        var listItem = new ListItem(new ConfirmKillPage(entry))
+        // If system process, use NoOpCommand (can't kill)
+        // If user process, use KillProcessCommand (double-click to kill)
+        var command = entry.IsSystemProcess
+            ? new Microsoft.CommandPalette.Extensions.Toolkit.NoOpCommand() as IInvokableCommand
+            : new KillProcessCommand(pid, processName);
+
+        var listItem = new ListItem(command)
         {
-            Title = $"Port {port} — {processName}",
+            // Title now shows port and process name - concise
+            Title = $"{port} — {processName}",
             Subtitle = subtitle,
             Icon = icon,
             // Details for the right panel (list + detail pattern)
             Details = CreateDetails(entry, port, processName, pid, memory, protocol, state, path)
+            // Double-click kills the process, no need for duplicate MoreCommands
         };
 
         return listItem;

@@ -45,7 +45,7 @@ internal sealed partial class KillProcessCommand : InvokableCommand
             KillResult.Success => CommandResult.ShowToast(new ToastArgs
             {
                 Message = $"Process {_processName} (PID {_pid}) killed successfully.",
-                Result = CommandResult.KeepOpen()
+                Result = CommandResult.GoHome()  // Refresh the list after kill
             }),
 
             KillResult.AlreadyDead => CommandResult.ShowToast(new ToastArgs
