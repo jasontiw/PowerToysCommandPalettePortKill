@@ -1,5 +1,7 @@
 # Port Kill - PowerToys Command Palette Extension
 
+![Port Kill Demo](docs/App-UI.gif)
+
 A Command Palette extension for Microsoft PowerToys that allows developers to quickly find and kill processes blocking TCP ports on Windows.
 
 ## Features

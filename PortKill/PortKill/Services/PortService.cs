@@ -94,9 +94,9 @@ public sealed partial class PortService : IDisposable
     }
 
     /// <summary>
-    /// Invalidates the cache. Call after successful kill operations.
+    /// Invalidates the cache. Call after operations that need fresh data.
     /// </summary>
-    private void InvalidateCache()
+    public void InvalidateCache()
     {
         _cacheLock.EnterWriteLock();
         try
