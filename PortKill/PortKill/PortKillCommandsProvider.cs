@@ -6,14 +6,12 @@
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using PortKill.Commands;
-using PortKill.Dock;
 using PortKill.Pages;
 
 namespace PortKill;
 
 /// <summary>
 /// Command provider that registers all Port Kill commands with the Command Palette.
-/// Also provides the Dock band for quick port status access.
 /// </summary>
 public sealed partial class PortKillCommandsProvider : CommandProvider
 {
@@ -38,22 +36,19 @@ public sealed partial class PortKillCommandsProvider : CommandProvider
                 Subtitle = "Find and kill processes blocking TCP ports",
                 // Using custom PNG icon
                 Icon = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.scale-100.png"),
-                MoreCommands = [
-                    new CommandContextItem(new CommonDevPortsPage())
-                    {
-                        Title = "Common ports",
-                        Icon = new IconInfo("\uE943")
-                    }
-                ]
+                MoreCommands = []
             }
         ];
     }
 
     /// <summary>
-    /// Returns the Dock band showing common dev port status.
+    /// Returns fallback commands that can be invoked without navigating to the extension.
     /// </summary>
-    public override ICommandItem[] GetDockBands()
+    public override IFallbackCommandItem[] FallbackCommands()
     {
-        return [new PortKillDockBand()];
+        return
+        [
+            new FallbackKillPortCommand()
+        ];
     }
 }

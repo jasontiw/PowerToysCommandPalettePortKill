@@ -46,13 +46,6 @@ internal sealed partial class PortKillPage : ListPage
                     Title = "No active ports found",
                     Subtitle = "All ports are free or no processes are listening",
                     Icon = new IconInfo("\uE73E") // Checkmark icon
-                },
-                // Keep Common ports option even when empty
-                new ListItem(new CommonDevPortsPage())
-                {
-                    Title = "Common ports",
-                    Subtitle = "Quick view of 3000, 4200, 5000, 5173, 8000, 8080, 9000",
-                    Icon = new IconInfo("\uE943") // Developer tools icon
                 }
             ];
         }
@@ -68,14 +61,6 @@ internal sealed partial class PortKillPage : ListPage
 
         // Add port entries (each with Details for the right panel)
         var items = entries.Select(CreatePortListItem).ToList();
-
-        // Keep Common ports option at the bottom
-        items.Add(new ListItem(new CommonDevPortsPage())
-        {
-            Title = "Common ports",
-            Subtitle = "Quick view of 3000, 4200, 5000, 5173, 8000, 8080, 9000",
-            Icon = new IconInfo("\uE943") // Developer tools icon
-        });
 
         return items.ToArray();
     }
