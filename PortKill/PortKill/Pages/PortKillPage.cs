@@ -23,7 +23,7 @@ internal sealed partial class PortKillPage : ListPage
     public PortKillPage()
     {
         // Using custom PNG icon
-        Icon = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.scale-100.png");
+        Icon = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.scale-200.png");
         Title = "Port Kill";
         Name = "Open";
         PlaceholderText = "Filter by port or process name...";

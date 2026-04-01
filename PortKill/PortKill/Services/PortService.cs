@@ -37,11 +37,6 @@ public sealed partial class PortService : IDisposable
     public static PortService Instance => _instance.Value;
 
     /// <summary>
-    /// Predefined common development ports for quick access.
-    /// </summary>
-    public static readonly int[] CommonDevPorts = [3000, 4200, 5000, 5173, 8000, 8080, 9000];
-
-    /// <summary>
     /// Protected system process names that should never be killed.
     /// </summary>
     private static readonly HashSet<string> SystemProcessNames = new(StringComparer.OrdinalIgnoreCase)
