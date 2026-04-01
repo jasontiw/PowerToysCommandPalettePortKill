@@ -23,7 +23,7 @@ internal sealed partial class PortKillPage : ListPage
     public PortKillPage()
     {
         // Using custom PNG icon
-        Icon = IconHelpers.FromRelativePath("Assets\\Square44x44Logo.scale-200.png");
+        Icon = Icons.AppIcon;
         Title = "Port Kill";
         Name = "Open";
         PlaceholderText = "Filter by port or process name...";
@@ -45,7 +45,7 @@ internal sealed partial class PortKillPage : ListPage
                 {
                     Title = "No active ports found",
                     Subtitle = "All ports are free or no processes are listening",
-                    Icon = new IconInfo("\uE73E") // Checkmark icon
+                    Icon = Icons.CheckmarkIcon
                 }
             ];
         }
@@ -85,8 +85,8 @@ internal sealed partial class PortKillPage : ListPage
 
         // Icon based on process type
         var icon = entry.IsSystemProcess
-            ? new IconInfo("\uE7BA")  // Shield for system
-            : new IconInfo("\uE74D"); // Delete for user processes
+            ? Icons.ShieldIcon  // Shield for system
+            : Icons.DeleteIcon; // Delete for user processes
 
         // If system process, use NoOpCommand (can't kill)
         // If user process, use KillProcessCommand (double-click to kill)

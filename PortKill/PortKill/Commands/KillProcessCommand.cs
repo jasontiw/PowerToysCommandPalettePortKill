@@ -33,7 +33,7 @@ internal sealed partial class KillProcessCommand : InvokableCommand
     public override string Name => $"Kill {_processName} (PID {_pid})";
 
     /// <inheritdoc/>
-    public override IconInfo Icon => new("\uE74D"); // Delete icon
+    public override IconInfo Icon => Icons.DeleteIcon;
 
     /// <inheritdoc/>
     public override ICommandResult Invoke()

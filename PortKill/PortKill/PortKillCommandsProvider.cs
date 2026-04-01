@@ -19,7 +19,7 @@ public sealed partial class PortKillCommandsProvider : CommandProvider
     {
         DisplayName = "Port Kill";
         // Using custom PNG icon
-        Icon = IconHelpers.FromRelativePath("Assets\\PortKillApp.svg");
+        Icon = Icons.AppIcon;
         Id = "com.portkill.provider";
     }
 
@@ -35,7 +35,7 @@ public sealed partial class PortKillCommandsProvider : CommandProvider
                 Title = "Port Kill",
                 Subtitle = "Find and kill processes blocking TCP ports",
                 // Using custom PNG icon
-                Icon = IconHelpers.FromRelativePath("Assets\\PortKillApp.svg"),
+                Icon = Icons.AppIcon,
                 MoreCommands = []
             }
         ];

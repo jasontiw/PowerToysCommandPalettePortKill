@@ -26,7 +26,7 @@ internal sealed partial class FallbackKillPortCommand : FallbackCommandItem
         Title = string.Empty;
         Subtitle = string.Empty;
         // Using custom PNG icon like the main app
-        Icon = IconHelpers.FromRelativePath("Assets\\PortKillApp.svg");
+        Icon = Icons.AppIcon;
     }
 
     /// <inheritdoc/>
@@ -37,7 +37,7 @@ internal sealed partial class FallbackKillPortCommand : FallbackCommandItem
             Title = string.Empty;
             Subtitle = string.Empty;
             Command = _emptyCommand;
-            Icon = IconHelpers.FromRelativePath("Assets\\PortKillApp.svg");
+            Icon = Icons.AppIcon;
             return;
         }
 
@@ -71,7 +71,7 @@ internal sealed partial class FallbackKillPortCommand : FallbackCommandItem
             Title = $"Port {port} is not in use";
             Subtitle = "No process is currently bound to this port";
             Command = _emptyCommand;
-            Icon = IconHelpers.FromRelativePath("Assets\\PortKillApp.svg"); // Info icon
+            Icon = Icons.AppIcon; // Info icon
             return;
         }
 
@@ -86,7 +86,7 @@ internal sealed partial class FallbackKillPortCommand : FallbackCommandItem
             Title = $"Port {port} in use by system process";
             Subtitle = $"Process: {processName} (protected)";
             Command = _emptyCommand;
-            Icon = IconHelpers.FromRelativePath("Assets\\PortKillApp.svg"); // Info icon
+            Icon = Icons.AppIcon; // Info icon
             return;
         }
 
@@ -105,7 +105,7 @@ internal sealed partial class FallbackKillPortCommand : FallbackCommandItem
             Title = $"Kill port {port}";
             Subtitle = $"{entry.Process!.Name} (PID: {entry.Process.Pid})";
             Command = new KillProcessCommand(entry.Process.Pid, entry.Process.Name);
-            Icon = IconHelpers.FromRelativePath("Assets\\PortKillApp.svg");
+            Icon = Icons.AppIcon;
         }
         else
         {
@@ -122,7 +122,7 @@ internal sealed partial class FallbackKillPortCommand : FallbackCommandItem
                 .ToArray();
 
             MoreCommands = commands;
-            Icon = IconHelpers.FromRelativePath("Assets\\PortKillApp.svg");
+            Icon = Icons.AppIcon;
         }
     }
 }

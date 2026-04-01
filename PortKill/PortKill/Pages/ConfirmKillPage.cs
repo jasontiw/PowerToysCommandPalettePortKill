@@ -27,7 +27,7 @@ internal sealed partial class ConfirmKillPage : ContentPage
     {
         _entry = entry;
         Title = "Confirm kill";
-        Icon = new IconInfo("\uE74D"); // Delete icon
+        Icon = Icons.DeleteIcon;
         Id = $"confirm-kill-{entry.Port.Port}-{entry.Port.ProcessId}";
 
         // Build content and commands based on whether it's a system process
@@ -55,7 +55,7 @@ internal sealed partial class ConfirmKillPage : ContentPage
                     subtitle: "Return to previous page",
                     result: CommandResult.GoBack())
                 {
-                    Icon = new IconInfo("\uE72B") // Back arrow
+                    Icon = Icons.BackIcon
                 }
             ];
         }
@@ -88,7 +88,7 @@ internal sealed partial class ConfirmKillPage : ContentPage
                     result: CommandResult.GoBack(),
                     action: () => new KillProcessCommand(pid, processName).Invoke())
                 {
-                    Icon = new IconInfo("\uE74D") // Delete icon
+                    Icon = Icons.DeleteIcon
                 },
                 new CommandContextItem(
                     title: "Cancel",
@@ -96,7 +96,7 @@ internal sealed partial class ConfirmKillPage : ContentPage
                     subtitle: "Do not kill",
                     result: CommandResult.GoBack())
                 {
-                    Icon = new IconInfo("\uE711") // Cancel icon
+                    Icon = Icons.CancelIcon
                 }
             ];
         }
@@ -115,7 +115,7 @@ internal sealed partial class BackCommand : InvokableCommand
 {
     public override string Name => "Cancel";
 
-    public override IconInfo Icon => new("\uE711"); // Cancel icon
+    public override IconInfo Icon => Icons.CancelIcon;
 
     public override ICommandResult Invoke()
     {
