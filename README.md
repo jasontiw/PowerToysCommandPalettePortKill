@@ -15,7 +15,7 @@ A Command Palette extension for Microsoft PowerToys that allows developers to qu
 
 ## Requirements
 
-- Windows 11 (22H2+)
+- Windows 10 version 2004 (build 19041) or later
 - PowerToys with Command Palette enabled
 - Visual Studio 2022+ with:
   - .NET desktop development workload
@@ -164,28 +164,35 @@ This extension can be distributed via WinGet. WinGet enables automatic discovery
 ### Prerequisites
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- [Inno Setup 6](https://jrsoftware.org/isdl.php) (for local builds)
+- [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) (for makeappx.exe)
 - GitHub CLI (`gh`)
 
 ### Local Build (Testing)
 
-To build installers locally:
+To build MSIX packages locally:
 
 ```powershell
 cd PortKill/PortKill
-.\build-exe.ps1 -Version "0.0.1.0" -WindowsPackageType None
+.\build-msix.ps1 -Version "0.0.1.0"
 ```
 
 This creates:
-- `bin\Release\installer\PortKill-Setup-0.0.1.0-x64.exe` (Intel/AMD)
-- `bin\Release\installer\PortKill-Setup-0.0.1.0-arm64.exe` (ARM)
+- `AppPackages\x64\*_x64.msix` (Intel/AMD)
+- `AppPackages\arm64\*_arm64.msix` (ARM)
+- `*.msixbundle` (combined bundle for Store submission)
+
+### Installing the MSIX
+
+1. Double-click the MSIX file to install
+2. Open Command Palette (Win+Shift+P)
+3. Type 'Reload' and select 'Reload Command Palette Extension'
 
 ### Release Process (GitHub Actions)
 
 The repository includes `.github/workflows/release-extension.yml` that automatically:
-1. Builds for x64 and ARM64
-2. Creates installers using Inno Setup
-3. Publishes a GitHub Release with the installers
+1. Builds MSIX packages for x64 and ARM64
+2. Creates an MSIX bundle
+3. Publishes a GitHub Release with the MSIX files
 4. Updates the WinGet manifest (PR in microsoft/winget-pkgs)
 
 **To create a new version:**
@@ -201,17 +208,17 @@ Or manually via GitHub:
 4. Click "Run workflow"
 
 **The workflow will:**
-- Build and create the installers
+- Build and create MSIX packages
 - Create a GitHub Release
 - Automatically submit/update the WinGet manifest
 
 ### First Time Setup
 
-1. Create initial release and installers locally or via GitHub Actions
+1. Create initial release and MSIX packages via GitHub Actions
 2. Submit to WinGet manually:
 
 ```powershell
-wingetcreate new "path/to/PortKill-Setup-0.0.1.0-x64.exe" "path/to/PortKill-Setup-0.0.1.0-arm64.exe"
+wingetcreate new "path/to/PortKill_0.0.1.0_x64.msix" "path/to/PortKill_0.0.1.0_arm64.msix"
 ```
 
 When prompted:
@@ -238,6 +245,8 @@ The workflow automatically updates the WinGet manifest and creates a PR in micro
 The manifest automatically includes:
 - `windows-commandpalette-extension` tag for Command Palette discovery
 - Both x64 and ARM64 architectures
+- MSIX installer type
+- Windows App SDK dependency
 
 ## License
 

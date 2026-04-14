@@ -20,6 +20,8 @@ env:
   GITHUB_REPO_URL: ${{ vars.GITHUB_REPO_URL || 'https://github.com/jasontiw/PowerToysCommandPalettePortKill' }}
   GITHUB_USER: ${{ vars.GITHUB_USER || 'jasontiw' }}
   PACKAGE_ID: ${{ vars.PACKAGE_ID || 'JasonTiw.PortKill' }}
+  CLSID: ${{ vars.CLSID || 'f1172d0c-c4f4-4a1a-9560-e949e8993e17' }}
+  PACKAGE_FAMILY_NAME: ${{ vars.PACKAGE_FAMILY_NAME || 'PortKill_15b1mzc2p8w76' }}
 
 jobs:
   build-and-release:
@@ -38,15 +40,61 @@ jobs:
       with:
         dotnet-version: '9.0.x'
     
-    - name: Install Inno Setup
-      run: choco install innosetup -y --no-progress
-      shell: pwsh
-    
-    - name: Build EXE installers (x64 and ARM64)
+    - name: Build MSIX packages (x64 and ARM64)
       run: |
         Set-Location "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}"
-        .\build-exe.ps1 -Version "${{ github.event.inputs.version }}" -Platforms "x64","arm64" -WindowsPackageType None
+        .\build-msix.ps1 -Version "${{ github.event.inputs.version }}" -Platforms "x64","arm64"
       shell: pwsh
+    
+    - name: Create MSIX bundle
+      run: |
+        Set-Location "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}"
+        
+        $version = "${{ github.event.inputs.version }}"
+        $x64Msix = Get-ChildItem "AppPackages\x64" -Recurse -Filter "*_x64*.msix" | Select-Object -First 1
+        $arm64Msix = Get-ChildItem "AppPackages\arm64" -Recurse -Filter "*_arm64*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        Write-Host "x64 MSIX: $($x64Msix.Name)"
+        if ($arm64Msix) {
+          Write-Host "ARM64 MSIX: $($arm64Msix.Name)"
+        }
+        
+        $mappingContent = "[Files]`n"
+        $mappingContent += "`"$($x64Msix.FullName)`" `"$($x64Msix.Name)`"`n"
+        if ($arm64Msix) {
+          $mappingContent += "`"$($arm64Msix.FullName)`" `"$($arm64Msix.Name)`"`n"
+        }
+        
+        $mappingContent | Out-File -FilePath "bundle_mapping.txt" -Encoding UTF8
+        Get-Content "bundle_mapping.txt"
+        
+        $makeappx = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.26100.0\x64\makeappx.exe"
+        if (-not (Test-Path $makeappx)) {
+          $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe" -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+          if ($makeappx) { $makeappx = $makeappx.FullName }
+        }
+        
+        if ($makeappx) {
+          Write-Host "Creating bundle..."
+          & $makeappx bundle /f bundle_mapping.txt /p "${{ env.EXTENSION_NAME }}_$version.msixbundle"
+          
+          $bundle = Get-ChildItem "*.msixbundle" | Select-Object -First 1
+          if ($bundle) {
+            Write-Host "Created bundle: $($bundle.Name)"
+          }
+        } else {
+          Write-Warning "makeappx.exe not found - skipping bundle"
+        }
+      shell: pwsh
+    
+    - name: Upload MSIX artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.EXTENSION_NAME }}-msix
+        path: |
+          ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/**/*.msix
+          ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/*.msixbundle
+        if-no-files-found: warn
     
     - name: Create GitHub Release
       id: release
@@ -62,19 +110,27 @@ jobs:
           
           ## Installation
           
-          Download the installer for your system architecture:
+          Download the MSIX installer for your system architecture:
           
-          - **x64 (Intel/AMD)**: `${{ env.EXTENSION_NAME }}-Setup-${{ github.event.inputs.version }}-x64.exe`
-          - **ARM64 (Windows on ARM)**: `${{ env.EXTENSION_NAME }}-Setup-${{ github.event.inputs.version }}-arm64.exe`
+          - **x64 (Intel/AMD)**: `*_x64.msix`
+          - **ARM64 (Windows on ARM)**: `*_arm64.msix`
           
-          1. Download the appropriate installer from the Assets section below
-          2. Run the installer with administrator privileges
-          3. The extension will be registered and available in Command Palette
-
+          1. Download the appropriate MSIX from the Assets below
+          2. Double-click the MSIX to install
+          3. Open Command Palette (Win+Shift+P)
+          4. Type 'Reload' and select 'Reload Command Palette Extension'
+          
+          ## Requirements
+          
+          - Windows 10 version 2004 (build 19041) or later
+          - PowerToys with Command Palette enabled
+          
           ## More Information
           
           Repository: ${{ env.GITHUB_REPO_URL }}
-        files: ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/bin/Release/installer/*.exe
+        assets: |
+          ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/**/*.msix
+          ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/*.msixbundle
         draft: false
         prerelease: false
       env:
@@ -92,16 +148,30 @@ jobs:
         $version = "${{ github.event.inputs.version }}"
         $tag = "v$version"
         
-        $x64Url = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag/${{ env.EXTENSION_NAME }}-Setup-$version-x64.exe"
-        $arm64Url = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag/${{ env.EXTENSION_NAME }}-Setup-$version-arm64.exe"
+        $x64Msix = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/x64" -Recurse -Filter "*_x64*.msix" | Select-Object -First 1
+        $arm64Msix = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/arm64" -Recurse -Filter "*_arm64*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        $releaseUrl = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag"
+        
+        $x64Url = "$releaseUrl/$($x64Msix.Name)"
         
         Write-Host "Updating WinGet manifest for version $version"
-        Write-Host "x64 URL: $x64Url"
-        Write-Host "arm64 URL: $arm64Url"
+        Write-Host "x64 MSIX URL: $x64Url"
         
-        .\wingetcreate.exe update ${{ env.PACKAGE_ID }} `
-          --version $version `
-          --urls "$x64Url|x64" "$arm64Url|arm64" `
-          --token ${{ secrets.GITHUB_TOKEN }} `
-          --submit
+        if ($arm64Msix) {
+          $arm64Url = "$releaseUrl/$($arm64Msix.Name)"
+          Write-Host "arm64 MSIX URL: $arm64Url"
+          
+          .\wingetcreate.exe update ${{ env.PACKAGE_ID }} `
+            --version $version `
+            --urls "$x64Url|x64" "$arm64Url|arm64" `
+            --token ${{ secrets.GITHUB_TOKEN }} `
+            --skip-pr
+        } else {
+          .\wingetcreate.exe update ${{ env.PACKAGE_ID }} `
+            --version $version `
+            --urls "$x64Url|x64" `
+            --token ${{ secrets.GITHUB_TOKEN }} `
+            --skip-pr
+        }
       shell: pwsh
