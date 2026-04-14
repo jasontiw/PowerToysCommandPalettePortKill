@@ -91,8 +91,8 @@ jobs:
         $version = "${{ github.event.inputs.version }}"
         $tag = "v$version"
         
-        $x64Url = "https://github.com/${{ env.GITHUB_REPO_URL }}/releases/download/$tag/${{ env.EXTENSION_NAME }}-Setup-$version-x64.exe"
-        $arm64Url = "https://github.com/${{ env.GITHUB_REPO_URL }}/releases/download/$tag/${{ env.EXTENSION_NAME }}-Setup-$version-arm64.exe"
+        $x64Url = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag/${{ env.EXTENSION_NAME }}-Setup-$version-x64.exe"
+        $arm64Url = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag/${{ env.EXTENSION_NAME }}-Setup-$version-arm64.exe"
         
         Write-Host "Updating WinGet manifest for version $version"
         Write-Host "x64 URL: $x64Url"
