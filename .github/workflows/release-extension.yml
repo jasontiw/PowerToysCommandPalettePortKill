@@ -52,8 +52,16 @@ jobs:
     - name: Clean previous builds
       shell: pwsh
       run: |
+        # Clean AppPackages directory
         Remove-Item -Recurse -Force "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages" -ErrorAction SilentlyContinue
+        # Clean any leftover MSIX/bundle files in root
         Remove-Item -Force "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/*.msix*" -ErrorAction SilentlyContinue
+        # Clean backup files from build-msix.ps1
+        Remove-Item -Force "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/*.manifest.backup" -ErrorAction SilentlyContinue
+        # Clean bundle mapping
+        Remove-Item -Force "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/bundle_mapping.txt" -ErrorAction SilentlyContinue
+        # Also clean any _Test directories that might have old versions
+        Get-ChildItem -Path "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}" -Directory -Filter "*_Test" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
     # -------------------------
     # 4. BUILD MSIX

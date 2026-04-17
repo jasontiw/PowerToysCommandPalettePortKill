@@ -13,7 +13,23 @@ Write-Host "Platforms: $($Platforms -join ', ')" -ForegroundColor Yellow
 
 $ProjectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectFile = "$ProjectDir\$ExtensionName.csproj"
+$ManifestFile = "$ProjectDir\app.manifest"
+$ManifestBackup = "$ProjectDir\app.manifest.backup"
+$AppxManifestFile = "$ProjectDir\Package.appxmanifest"
+$AppxManifestBackup = "$ProjectDir\Package.appxmanifest.backup"
 
+# Create backup of original manifests
+if (Test-Path $ManifestBackup) {
+    Remove-Item $ManifestBackup -Force
+}
+Copy-Item $ManifestFile $ManifestBackup
+
+if (Test-Path $AppxManifestBackup) {
+    Remove-Item $AppxManifestBackup -Force
+}
+Copy-Item $AppxManifestFile $AppxManifestBackup
+
+# Cleanup before build
 if (Test-Path "$ProjectDir\bin") { 
     Remove-Item -Path "$ProjectDir\bin" -Recurse -Force -ErrorAction SilentlyContinue 
 }
@@ -26,12 +42,21 @@ dotnet restore $ProjectFile
 
 foreach ($Platform in $Platforms) {
     Write-Host "`n=== Building $Platform MSIX ===" -ForegroundColor Cyan
-    $manifestPath = "$ProjectDir\app.manifest"
-
+    
+    # Restore original manifests before each build
+    Copy-Item $ManifestBackup $ManifestFile -Force
+    Copy-Item $AppxManifestBackup $AppxManifestFile -Force
+    
     Write-Host "Patching manifest version to $Version..." -ForegroundColor Yellow
     
-    (Get-Content $manifestPath) -replace '\$\((Version|PackageVersion)\)', $Version |
-    Set-Content $manifestPath
+    # Patch app.manifest (assembly version)
+    (Get-Content $ManifestFile) -replace '\$\((Version|PackageVersion)\)', $Version |
+    Set-Content $ManifestFile
+    
+    # Patch Package.appxmanifest (Identity version)
+    $content = Get-Content $AppxManifestFile -Raw
+    $content = $content -replace '(?s)<Identity[^>]*Version=")([^"]*)(")', "`$1$Version`$2"
+    Set-Content -Path $AppxManifestFile -Value $content
     
     $platformArg = if ($Platform -eq "arm64") { "ARM64" } else { "x64" }
     $packageDir = "AppPackages\$Platform"
@@ -87,3 +112,11 @@ Write-Host "2. Open Command Palette (Win+Shift+P)" -ForegroundColor White
 Write-Host "3. Type 'Reload' and select 'Reload Command Palette Extension'" -ForegroundColor White
 Write-Host ""
 Write-Host "MSIX files location: AppPackages\x64\ and AppPackages\arm64\" -ForegroundColor Yellow
+
+# Cleanup backup files
+if (Test-Path $ManifestBackup) {
+    Remove-Item $ManifestBackup -Force
+}
+if (Test-Path $AppxManifestBackup) {
+    Remove-Item $AppxManifestBackup -Force
+}
