@@ -66,12 +66,14 @@ foreach ($Platform in $Platforms) {
     }
     New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
     
-    Write-Host "Building MSIX for $platformArg..." -ForegroundColor Yellow
+Write-Host "Building MSIX for $platformArg..." -ForegroundColor Yellow
     
-    dotnet build $ProjectFile `
+    # Use publish instead of build to generate MSIX package
+    dotnet publish $ProjectFile `
         --configuration $Configuration `
         -p:Platform=$platformArg `
-        -p:RuntimeIdentifier="win-$Platform" `
+        -p:RuntimeIdentifier=win-$Platform `
+        -p:PublishDir="$packageDir\" `
         -p:GenerateAppxPackageOnBuild=true `
         -p:AppxPackageDir="$packageDir\" `
         -p:AppxBundle=Never `
@@ -88,21 +90,33 @@ foreach ($Platform in $Platforms) {
     }
 
     $msixFiles = Get-ChildItem -Path $packageDir -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue
-    if ($msixFiles) {
-        foreach ($msix in $msixFiles) {
-            $sizeMB = [math]::Round($msix.Length / 1MB, 2)
-            Write-Host "Created MSIX: $($msix.Name) ($sizeMB MB)" -ForegroundColor Green
-        }
-    } else {
-        Write-Warning "No MSIX files found in $packageDir"
+    if (-not $msixFiles) {
+        Write-Host "Looking for MSIX in bin directory..." -ForegroundColor Yellow
         $binMsix = Get-ChildItem -Path "$ProjectDir\bin" -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue
         if ($binMsix) {
-            Write-Host "Found MSIX in bin directory:" -ForegroundColor Yellow
+            Write-Host "Found MSIX in bin:" -ForegroundColor Yellow
             foreach ($msix in $binMsix) {
                 $sizeMB = [math]::Round($msix.Length / 1MB, 2)
                 Write-Host "  $($msix.Name) ($sizeMB MB)" -ForegroundColor Green
+                # Copy to package dir
+                $destDir = if ($Platform -eq "x64") { "AppPackages\x64" } else { "AppPackages\arm64" }
+                if (-not (Test-Path $destDir)) {
+                    New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+                }
+                Copy-Item $msix.FullName "$destDir\" -Force
             }
+            $msixFiles = Get-ChildItem -Path $packageDir -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue
         }
+    }
+    
+    if (-not $msixFiles) {
+        Write-Error "FATAL: No MSIX files generated for $Platform! Build may have completed but MSIX package was not created."
+        exit 1
+    }
+    
+    foreach ($msix in $msixFiles) {
+        $sizeMB = [math]::Round($msix.Length / 1MB, 2)
+        Write-Host "Created MSIX: $($msix.Name) ($sizeMB MB)" -ForegroundColor Green
     }
 }
 

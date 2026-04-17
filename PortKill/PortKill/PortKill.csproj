@@ -13,10 +13,10 @@
     <PackageVersion>$(PackageVersion)</PackageVersion>
     <WindowsPackageType>MSIX</WindowsPackageType>
     <Nullable>enable</Nullable>
+    <EnableMsixTooling>true</EnableMsixTooling>
     
-    <!-- Disable MSIX validation task that has a bug with System.Security.Permissions -->
+    <!-- Disable MSIX signing but allow package creation -->
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
-    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Assets\PortKillApp.svg">
@@ -54,6 +54,11 @@
     <PackageReference Include="Microsoft.CommandPalette.Extensions" />
     <PackageReference Include="Microsoft.Windows.CsWinRT" />
     <PackageReference Include="Shmuelie.WinRTServer" />
+    <!-- MSIX packaging tools -->
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <None Update="Assets\LargeTile.scale-100.png">
@@ -289,6 +294,15 @@
   <ItemGroup>
     <Folder Include="Assets\Icons\" />
   </ItemGroup>
+
+  <!-- MSIX Package Creation -->
+  <ItemGroup Condition="'$(EnableMsixTooling)'=='true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(EnableMsixTooling)'=='true'">
+    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+  </PropertyGroup>
 
   <PropertyGroup>
     <PublishSingleFile>false</PublishSingleFile>
