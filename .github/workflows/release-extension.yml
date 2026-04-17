@@ -128,13 +128,13 @@ jobs:
           ## More Information
           
           Repository: ${{ env.GITHUB_REPO_URL }}
-        assets: |
+        files: |
           ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/**/*.msix
           ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/*.msixbundle
         draft: false
         prerelease: false
       env:
-        GITHUB_TOKEN: ${{ env.GITHUB_REPO_URL }}
+        GITHUB_TOKEN: ${{ secrets.GH_PAT }}
     
     - name: Install wingetcreate
       run: |
