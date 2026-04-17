@@ -26,6 +26,12 @@ dotnet restore $ProjectFile
 
 foreach ($Platform in $Platforms) {
     Write-Host "`n=== Building $Platform MSIX ===" -ForegroundColor Cyan
+    $manifestPath = "$ProjectDir\app.manifest"
+
+    Write-Host "Patching manifest version to $Version..." -ForegroundColor Yellow
+    
+    (Get-Content $manifestPath) -replace '\$\((Version|PackageVersion)\)', $Version |
+    Set-Content $manifestPath
     
     $platformArg = if ($Platform -eq "arm64") { "ARM64" } else { "x64" }
     $packageDir = "AppPackages\$Platform"
