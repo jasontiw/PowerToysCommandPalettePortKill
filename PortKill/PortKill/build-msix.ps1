@@ -18,6 +18,38 @@ $ManifestBackup = "$ProjectDir\app.manifest.backup"
 $AppxManifestFile = "$ProjectDir\Package.appxmanifest"
 $AppxManifestBackup = "$ProjectDir\Package.appxmanifest.backup"
 
+# Find makeappx.exe - check multiple common locations
+$makeappx = $null
+
+# Try standard Windows Kit locations
+$locations = @(
+    "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe",
+    "C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\makeappx.exe",
+    "C:\Program Files (x86)\Windows Kits\10\bin\11.*\x64\makeappx.exe"
+)
+
+foreach ($loc in $locations) {
+    $found = Get-ChildItem $loc -Recurse -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+    if ($found) {
+        $makeappx = $found
+        break
+    }
+}
+
+# Fallback: use where.exe to find makeappx in PATH
+if (-not $makeappx) {
+    $makeappx = Get-Command makeappx.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+}
+
+if (-not $makeappx) {
+    Write-Error "makeappx.exe not found. Please install Windows SDK."
+    Write-Host "Checked paths:" -ForegroundColor Yellow
+    foreach ($loc in $locations) { Write-Host "  $loc" -ForegroundColor Gray }
+    exit 1
+}
+
+Write-Host "Using makeappx: $($makeappx.Source)" -ForegroundColor Cyan
+
 # Create backup of original manifests
 if (Test-Path $ManifestBackup) {
     Remove-Item $ManifestBackup -Force
@@ -59,65 +91,84 @@ foreach ($Platform in $Platforms) {
     Set-Content -Path $AppxManifestFile -Value $content
     
     $platformArg = if ($Platform -eq "arm64") { "ARM64" } else { "x64" }
+    $runtimeId = "win-$Platform"
     $packageDir = "AppPackages\$Platform"
+    $stagingDir = "$packageDir\staging"
     
     if (Test-Path $packageDir) {
         Remove-Item -Path $packageDir -Recurse -Force -ErrorAction SilentlyContinue
     }
-    New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
     
-Write-Host "Building MSIX for $platformArg..." -ForegroundColor Yellow
+    Write-Host "Building for $platformArg (Runtime: $runtimeId)..." -ForegroundColor Yellow
     
-    # Use publish instead of build to generate MSIX package
+    # Build the app (without MSIX packaging)
     dotnet publish $ProjectFile `
         --configuration $Configuration `
         -p:Platform=$platformArg `
-        -p:RuntimeIdentifier=win-$Platform `
-        -p:PublishDir="$packageDir\" `
-        -p:GenerateAppxPackageOnBuild=true `
-        -p:AppxPackageDir="$packageDir\" `
-        -p:AppxBundle=Never `
+        -p:RuntimeIdentifier=$runtimeId `
+        -p:PublishDir="$stagingDir\" `
         -p:PublishTrimmed=false `
         -p:Version=$Version `
         -p:PackageVersion=$Version `
         -p:ApplicationVersion=$Version `
-        -p:ValidateAppxManifest=false `
-        -p:WinAppSdkValidateAppxManifest=false
-
+        -p:GenerateAppxPackageOnBuild=false
+    
     if ($LASTEXITCODE -ne 0) { 
         Write-Warning "Build failed for $Platform with exit code: $LASTEXITCODE"
         continue
     }
-
-    $msixFiles = Get-ChildItem -Path $packageDir -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue
-    if (-not $msixFiles) {
-        Write-Host "Looking for MSIX in bin directory..." -ForegroundColor Yellow
-        $binMsix = Get-ChildItem -Path "$ProjectDir\bin" -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue
-        if ($binMsix) {
-            Write-Host "Found MSIX in bin:" -ForegroundColor Yellow
-            foreach ($msix in $binMsix) {
-                $sizeMB = [math]::Round($msix.Length / 1MB, 2)
-                Write-Host "  $($msix.Name) ($sizeMB MB)" -ForegroundColor Green
-                # Copy to package dir
-                $destDir = if ($Platform -eq "x64") { "AppPackages\x64" } else { "AppPackages\arm64" }
-                if (-not (Test-Path $destDir)) {
-                    New-Item -ItemType Directory -Path $destDir -Force | Out-Null
-                }
-                Copy-Item $msix.FullName "$destDir\" -Force
-            }
-            $msixFiles = Get-ChildItem -Path $packageDir -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue
+    
+    # Verify we have the exe
+    $exePath = "$stagingDir\$ExtensionName.exe"
+    if (-not (Test-Path $exePath)) {
+        $altExe = Get-ChildItem -Path $stagingDir -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($altExe) {
+            $exePath = $altExe.FullName
+            Write-Host "Found exe: $($altExe.Name)" -ForegroundColor Yellow
+        } else {
+            Write-Error "No exe found in $stagingDir"
+            continue
         }
     }
     
-    if (-not $msixFiles) {
-        Write-Error "FATAL: No MSIX files generated for $Platform! Build may have completed but MSIX package was not created."
-        exit 1
+    # Copy manifest as AppxManifest.xml
+    Copy-Item "$ProjectDir\Package.appxmanifest" "$stagingDir\AppxManifest.xml" -Force
+    
+    # The publish should have copied Assets, verify and copy if needed
+    $assetsInStaging = Get-ChildItem "$stagingDir\Assets" -ErrorAction SilentlyContinue
+    if (-not $assetsInStaging) {
+        Write-Host "Copying Assets to staging..." -ForegroundColor Yellow
+        Copy-Item "$ProjectDir\Assets" "$stagingDir\Assets" -Recurse -Force
     }
     
-    foreach ($msix in $msixFiles) {
-        $sizeMB = [math]::Round($msix.Length / 1MB, 2)
-        Write-Host "Created MSIX: $($msix.Name) ($sizeMB MB)" -ForegroundColor Green
+    Write-Host "Creating MSIX package..." -ForegroundColor Yellow
+    
+    # Create MSIX using makeappx (no validation)
+    $msixName = "PortKill_${Version}_${Platform}.msix"
+    $msixPath = "$packageDir\$msixName"
+    
+    & $makeappx.FullName pack /d $stagingDir /p $msixPath /nv
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to create MSIX for $Platform. Exit code: $LASTEXITCODE"
+        # Debug: show staging dir contents
+        Write-Host "Staging dir contents:" -ForegroundColor Yellow
+        Get-ChildItem -Path $stagingDir -Recurse | Select-Object FullName
+        continue
     }
+    
+    # Verify MSIX was created
+    if (Test-Path $msixPath) {
+        $msix = Get-Item $msixPath
+        $sizeMB = [math]::Round($msix.Length / 1MB, 2)
+        Write-Host "Created MSIX: $msixName ($sizeMB MB)" -ForegroundColor Green
+    } else {
+        Write-Error "MSIX not found at $msixPath"
+    }
+    
+    # Cleanup staging folder (keep MSIX in packageDir)
+    Remove-Item -Path $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host "`n=== Build completed! ===" -ForegroundColor Green
