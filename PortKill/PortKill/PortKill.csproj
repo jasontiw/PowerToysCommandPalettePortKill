@@ -12,11 +12,11 @@
     <Version>$(Version)</Version>
     <PackageVersion>$(PackageVersion)</PackageVersion>
     <WindowsPackageType>MSIX</WindowsPackageType>
-    <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     
-    <!-- Disable MSIX manifest validation to avoid System.Security.Permissions bug -->
-    <ValidateAppxManifest>false</ValidateAppxManifest>
+    <!-- Disable MSIX validation task that has a bug with System.Security.Permissions -->
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Assets\PortKillApp.svg">
@@ -54,12 +54,6 @@
     <PackageReference Include="Microsoft.CommandPalette.Extensions" />
     <PackageReference Include="Microsoft.Windows.CsWinRT" />
     <PackageReference Include="Shmuelie.WinRTServer" />
-
-    <!-- Needed to enable building an MSIX package -->
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" Condition="'$(EnableMsixTooling)'=='true'">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <None Update="Assets\LargeTile.scale-100.png">
@@ -292,17 +286,9 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(EnableMsixTooling)'=='true'">
-    <ProjectCapability Include="Msix" />
-  </ItemGroup>
-
   <ItemGroup>
     <Folder Include="Assets\Icons\" />
   </ItemGroup>
-
-  <PropertyGroup Condition="'$(EnableMsixTooling)'=='true'">
-    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
-  </PropertyGroup>
 
   <PropertyGroup>
     <PublishSingleFile>false</PublishSingleFile>

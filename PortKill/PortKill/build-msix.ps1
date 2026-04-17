@@ -78,7 +78,9 @@ foreach ($Platform in $Platforms) {
         -p:PublishTrimmed=false `
         -p:Version=$Version `
         -p:PackageVersion=$Version `
-        -p:ApplicationVersion=$Version
+        -p:ApplicationVersion=$Version `
+        -p:ValidateAppxManifest=false `
+        -p:WinAppSdkValidateAppxManifest=false
 
     if ($LASTEXITCODE -ne 0) { 
         Write-Warning "Build failed for $Platform with exit code: $LASTEXITCODE"
