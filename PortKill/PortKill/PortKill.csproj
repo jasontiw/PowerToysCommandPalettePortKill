@@ -14,6 +14,9 @@
     <WindowsPackageType>MSIX</WindowsPackageType>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
+    
+    <!-- Disable MSIX manifest validation to avoid System.Security.Permissions bug -->
+    <ValidateAppxManifest>false</ValidateAppxManifest>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Assets\PortKillApp.svg">
