@@ -46,7 +46,8 @@ foreach ($Platform in $Platforms) {
         -p:AppxBundle=Never `
         -p:PublishTrimmed=false `
         -p:Version=$Version `
-        -p:PackageVersion=$Version
+        -p:PackageVersion=$Version `
+        -p:ApplicationVersion=$Version
 
     if ($LASTEXITCODE -ne 0) { 
         Write-Warning "Build failed for $Platform with exit code: $LASTEXITCODE"
