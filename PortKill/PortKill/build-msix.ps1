@@ -55,7 +55,7 @@ foreach ($Platform in $Platforms) {
     
     # Patch Package.appxmanifest (Identity version)
     $content = Get-Content $AppxManifestFile -Raw
-    $content = $content -replace '(?s)<Identity[^>]*Version=")([^"]*)(")', "`$1$Version`$2"
+    $content = $content -replace 'Version="[^"]*"', "Version=`"$Version`""
     Set-Content -Path $AppxManifestFile -Value $content
     
     $platformArg = if ($Platform -eq "arm64") { "ARM64" } else { "x64" }
