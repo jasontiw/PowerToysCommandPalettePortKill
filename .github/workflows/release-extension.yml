@@ -134,7 +134,7 @@ jobs:
         draft: false
         prerelease: false
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ env.GITHUB_REPO_URL }}
     
     - name: Install wingetcreate
       run: |
@@ -165,13 +165,13 @@ jobs:
           .\wingetcreate.exe update ${{ env.PACKAGE_ID }} `
             --version $version `
             --urls "$x64Url|x64" "$arm64Url|arm64" `
-            --token ${{ secrets.GITHUB_TOKEN }} `
-            --skip-pr
+            --token ${{ secrets.GH_PAT }} `
+            --submit
         } else {
           .\wingetcreate.exe update ${{ env.PACKAGE_ID }} `
             --version $version `
             --urls "$x64Url|x64" `
-            --token ${{ secrets.GITHUB_TOKEN }} `
+            --token ${{ secrets.GH_PAT }} `
             --skip-pr
         }
       shell: pwsh
