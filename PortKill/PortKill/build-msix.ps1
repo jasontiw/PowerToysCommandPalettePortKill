@@ -81,14 +81,16 @@ foreach ($Platform in $Platforms) {
     
     Write-Host "Patching manifest version to $Version..." -ForegroundColor Yellow
     
-    # Patch app.manifest (assembly version)
-    (Get-Content $ManifestFile) -replace '\$\((Version|PackageVersion)\)', $Version |
-    Set-Content $ManifestFile
+    # Patch app.manifest (assembly version) - use UTF-8 with BOM
+    $appManifestContent = (Get-Content $ManifestFile -Raw) -replace '\$\((Version|PackageVersion)\)', $Version
+    [System.IO.File]::WriteAllText($ManifestFile, $appManifestContent, [System.Text.UTF8Encoding]::new($true))
     
-    # Patch Package.appxmanifest (Identity version)
+    # Patch ONLY the Identity Version attribute - use simple string replace, NOT XML DOM
+    # This preserves the original formatting
     $content = Get-Content $AppxManifestFile -Raw
-    $content = $content -replace 'Version="[^"]*"', "Version=`"$Version`""
-    Set-Content -Path $AppxManifestFile -Value $content
+    # Match exactly: <Identity ... Version="0.0.1.0" or Version="0.0.2.0" etc
+    $content = $content -replace '(?<=<Identity[^>]*\s)Version="[^"]*"', "Version=`"$Version`""
+    [System.IO.File]::WriteAllText($AppxManifestFile, $content, [System.Text.UTF8Encoding]::new($true))
     
     $platformArg = if ($Platform -eq "arm64") { "ARM64" } else { "x64" }
     $runtimeId = "win-$Platform"
@@ -109,7 +111,7 @@ foreach ($Platform in $Platforms) {
         -p:RuntimeIdentifier=$runtimeId `
         -p:PublishDir="$stagingDir\" `
         -p:PublishTrimmed=false `
-        -p:Version=$Versions
+        -p:Version=$Version
     
     if ($LASTEXITCODE -ne 0) { 
         Write-Warning "Build failed for $Platform with exit code: $LASTEXITCODE"
