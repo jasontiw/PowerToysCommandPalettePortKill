@@ -109,7 +109,7 @@ foreach ($Platform in $Platforms) {
         -p:RuntimeIdentifier=$runtimeId `
         -p:PublishDir="$stagingDir\" `
         -p:PublishTrimmed=false `
-        -p:Version=$Versions
+        -p:Version=$Version
     
     if ($LASTEXITCODE -ne 0) { 
         Write-Warning "Build failed for $Platform with exit code: $LASTEXITCODE"
