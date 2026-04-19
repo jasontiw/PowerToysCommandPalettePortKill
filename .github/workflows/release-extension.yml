@@ -130,8 +130,9 @@ jobs:
           ${{ github.event.inputs.release_notes }}
 
           ## Installation
-          - x64: *_x64.msix
-          - ARM64: *_arm64.msix
+          - **Recommended**: `PortKill_X.X.X.X.msixbundle` (contains all architectures)
+          - x64: `PortKill_X.X.X.X_x64.msix`
+          - ARM64: `PortKill_X.X.X.X_arm64.msix`
 
         files: |
           ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/**/*.msix
@@ -155,20 +156,23 @@ jobs:
         $version = "${{ github.event.inputs.version }}"
         $tag = "v$version"
 
-        $x64 = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/x64" -Recurse -Filter "*_x64*.msix" | Select-Object -First 1
-        $arm = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/arm64" -Recurse -Filter "*_arm64*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
+        # Find the msixbundle file (contains all architectures)
+        $bundle = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}" -Recurse -Filter "*.msixbundle" | Select-Object -First 1
 
-        $base = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag"
-
-        $args = @()
-        $args += "$base/$($x64.Name)|x64"
-
-        if ($arm) {
-          $args += "$base/$($arm.Name)|arm64"
+        if (-not $bundle) {
+          Write-Host "ERROR: No msixbundle found. Ensure bundle creation step succeeded."
+          exit 1
         }
+
+        $baseUrl = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag"
+
+        # Use the msixbundle - it contains all architectures in one file
+        $url = "$baseUrl/$($bundle.Name)"
+
+        Write-Host "Updating winget manifest with bundle: $url"
 
         .\wingetcreate.exe update "${{ env.PACKAGE_ID }}" `
           --version $version `
-          --urls $args `
+          --urls $url `
           --token "${{ secrets.GH_PAT }}" `
           --submit
