@@ -156,23 +156,32 @@ jobs:
         $version = "${{ github.event.inputs.version }}"
         $tag = "v$version"
 
-        # Find the msixbundle file (contains all architectures)
-        $bundle = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}" -Recurse -Filter "*.msixbundle" | Select-Object -First 1
+        # Get both architectures from local build
+        $x64 = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/x64" -Recurse -Filter "*_x64*.msix" | Select-Object -First 1
+        $arm = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/arm64" -Recurse -Filter "*_arm64*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
 
-        if (-not $bundle) {
-          Write-Host "ERROR: No msixbundle found. Ensure bundle creation step succeeded."
+        if (-not $x64) {
+          Write-Host "ERROR: No x64 MSIX found."
           exit 1
         }
 
         $baseUrl = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag"
 
-        # Use the msixbundle - it contains all architectures in one file
-        $url = "$baseUrl/$($bundle.Name)"
+        # Build URLs - wingetcreate will download from these URLs when running update
+        $urls = @()
+        $urls += "$baseUrl/$($x64.Name)|x64"
 
-        Write-Host "Updating winget manifest with bundle: $url"
+        if ($arm) {
+          $urls += "$baseUrl/$($arm.Name)|arm64"
+        }
 
+        Write-Host "Updating winget manifest..."
+        Write-Host "URLs: $urls"
+
+        # Use --skip-sprite-store to avoid MSIX parsing issues from GitHub CDN
         .\wingetcreate.exe update "${{ env.PACKAGE_ID }}" `
           --version $version `
-          --urls $url `
+          --urls $urls `
+          --skip-sprite-store `
           --token "${{ secrets.GH_PAT }}" `
           --submit
