@@ -50,9 +50,10 @@ A Command Palette extension for Microsoft PowerToys that allows developers to qu
 
    > **Important**: Building alone (`Ctrl + Shift + B`) is not enough. You must deploy for PowerToys to detect the extension.
 
-4. Reload Command Palette:
-   - Open Command Palette: **Win + Alt + Space**
-   - Type "Reload" and select "Reload Command Palette Extension"
+### Via Command Palette (Win+Alt+Space)
+
+1. Press **Win + Alt + Space** to open Command Palette
+2. Type "Reload" and select "Reload Command Palette Extension"
 
 5. Find the extension:
    - Type "Port Kill" in the Command Palette
@@ -173,18 +174,23 @@ To build MSIX packages locally:
 
 ```powershell
 cd PortKill/PortKill
-.\build-msix.ps1 -Version "0.0.1.0"
+.\build-msix.ps1 -Version "0.0.2.0"
+```
+
+By default builds both platforms (x64 and arm64). To build specific platforms:
+```powershell
+.\build-msix.ps1 -Version "0.0.2.0" -Platforms "x64"
 ```
 
 This creates:
 - `AppPackages\x64\*_x64.msix` (Intel/AMD)
-- `AppPackages\arm64\*_arm64.msix` (ARM)
-- `*.msixbundle` (combined bundle for Store submission)
+- `AppPackages\arm64\*_arm64.msix` (ARM64)
+- `*.msixbundle` (combined bundle)
 
 ### Installing the MSIX
 
 1. Double-click the MSIX file to install
-2. Open Command Palette (Win+Shift+P)
+2. Open Command Palette (**Win + Alt + Space**)
 3. Type 'Reload' and select 'Reload Command Palette Extension'
 
 ### Release Process (GitHub Actions)

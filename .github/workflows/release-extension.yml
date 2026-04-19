@@ -85,21 +85,34 @@ jobs:
         $x64 = Get-ChildItem "AppPackages\x64" -Recurse -Filter "*_x64*.msix" | Select-Object -First 1
         $arm = Get-ChildItem "AppPackages\arm64" -Recurse -Filter "*_arm64*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
 
+        # Use relative paths including subdirectories (critical - MSIX files are in subfolders)
         $mapping = "[Files]`n"
-        $mapping += "`"$($x64.FullName)`" `"$($x64.Name)`"`n"
+        $mapping += "`"AppPackages\x64\$($x64.Name)`" `"$($x64.Name)`"`n"
 
         if ($arm) {
-          $mapping += "`"$($arm.FullName)`" `"$($arm.Name)`"`n"
+          $mapping += "`"AppPackages\arm64\$($arm.Name)`" `"$($arm.Name)`"`n"
         }
 
         $mapping | Out-File "bundle_mapping.txt" -Encoding UTF8
 
-        $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe" -Recurse |
-          Sort-Object Name -Descending |
-          Select-Object -First 1
+        # Find makeappx.exe in standard locations
+        $makeappx = $null
+        $searchPaths = @(
+          "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe",
+          "C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\makeappx.exe",
+          "C:\Program Files (x86)\Windows Kits\10\bin\11.*\x64\makeappx.exe"
+        )
+
+        foreach ($path in $searchPaths) {
+          $makeappx = Get-ChildItem $path -Recurse -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+          if ($makeappx) { break }
+        }
 
         if ($makeappx) {
+          Write-Host "Using makeappx: $($makeappx.FullName)"
           & $makeappx.FullName bundle /f bundle_mapping.txt /p "${{ env.EXTENSION_NAME }}_$version.msixbundle"
+        } else {
+          Write-Host "makeappx.exe not found, skipping bundle creation"
         }
 
     # -------------------------

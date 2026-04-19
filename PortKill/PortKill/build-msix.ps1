@@ -90,6 +90,11 @@ foreach ($Platform in $Platforms) {
     $content = Get-Content $AppxManifestFile -Raw
     # Match exactly: <Identity ... Version="0.0.1.0" or Version="0.0.2.0" etc
     $content = $content -replace '(?<=<Identity[^>]*\s)Version="[^"]*"', "Version=`"$Version`""
+    
+    # Patch ProcessorArchitecture based on platform
+    $arch = if ($Platform -eq "arm64") { "arm64" } else { "x64" }
+    $content = $content -replace 'ProcessorArchitecture="[^"]*"', "ProcessorArchitecture=`"$arch`""
+    
     [System.IO.File]::WriteAllText($AppxManifestFile, $content, [System.Text.UTF8Encoding]::new($true))
     
     $platformArg = if ($Platform -eq "arm64") { "ARM64" } else { "x64" }
