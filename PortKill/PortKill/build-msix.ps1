@@ -109,14 +109,16 @@ foreach ($Platform in $Platforms) {
     
     Write-Host "Building for $platformArg (Runtime: $runtimeId)..." -ForegroundColor Yellow
     
-    # Build the app (without passing version properties - use csproj hardcoded version)
+    # Build the app with MSIX tooling to resolve $targetnametoken$ and $targetentrypoint$ tokens
     dotnet publish $ProjectFile `
         --configuration $Configuration `
         -p:Platform=$platformArg `
         -p:RuntimeIdentifier=$runtimeId `
         -p:PublishDir="$stagingDir\" `
         -p:PublishTrimmed=false `
-        -p:Version=$Version
+        -p:Version=$Version `
+        -p:WindowsPackageType=MSIX `
+        -p:EnableMsixTooling=true
     
     if ($LASTEXITCODE -ne 0) { 
         Write-Warning "Build failed for $Platform with exit code: $LASTEXITCODE"
