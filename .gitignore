@@ -368,3 +368,9 @@ setup-arm64.iss
 
 # Installer output (generated)
 **/installer/*.exe
+
+# Certificates (keep local!)
+*.pfx
+
+# MSIX packages (generated)
+AppPackages/

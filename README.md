@@ -174,6 +174,13 @@ To build MSIX packages locally:
 
 ```powershell
 cd PortKill/PortKill
+
+# Without signing (for testing only)
+.\build-msix.ps1 -Version "0.0.2.0"
+
+# With signing (requires certificate)
+$env:CERT_BASE64 = "your-certificate-base64"
+$env:CERT_PASSWORD = "your-cert-password"
 .\build-msix.ps1 -Version "0.0.2.0"
 ```
 
@@ -197,14 +204,22 @@ This creates:
 
 The repository includes `.github/workflows/release-extension.yml` that automatically:
 1. Builds MSIX packages for x64 and ARM64
-2. Creates an MSIX bundle
-3. Publishes a GitHub Release with the MSIX files
-4. Updates the WinGet manifest (PR in microsoft/winget-pkgs)
+2. Signs the MSIX (requires GitHub Secrets)
+3. Creates an MSIX bundle
+4. Publishes a GitHub Release with the MSIX files
+5. Creates WinGet PR (without auto-submit)
 
-**To create a new version:**
+**Trigger options:**
 
+Option 1 - Git tag (recommended):
 ```powershell
-gh workflow run release-extension.yml -f version="0.0.1.0" -f release_notes="What's new in this version"
+git tag v0.0.2.0
+git push origin v0.0.2.0
+```
+
+Option 2 - GitHub workflow dispatch:
+```powershell
+gh workflow run release-extension.yml -f version="0.0.2.0" -f release_notes="What's new"
 ```
 
 Or manually via GitHub:
@@ -213,28 +228,17 @@ Or manually via GitHub:
 3. Add release notes
 4. Click "Run workflow"
 
-**The workflow will:**
-- Build and create MSIX packages
-- Create a GitHub Release
-- Automatically submit/update the WinGet manifest
+**Requirements (GitHub Secrets):**
+- `CERT_BASE64` - Certificate (.pfx) encoded in Base64
+- `CERT_PASSWORD` - Certificate password
+- `GH_PAT` - GitHub token with repo scope
 
 ### First Time Setup
 
 1. Create initial release and MSIX packages via GitHub Actions
-2. Submit to WinGet manually:
-
-```powershell
-wingetcreate new "path/to/PortKill_0.0.1.0_x64.msix" "path/to/PortKill_0.0.1.0_arm64.msix"
-```
-
-When prompted:
-- PackageIdentifier: `JasonTiw.PortKill`
-- Publisher: `JasonTiw`
-- PackageName: `PortKill`
-- Answer "No" to optional modifications
-- Answer "Yes" to submit
-
-3. Accept the CLA in the PR (comment: `@microsoft-github-policy-service agree`)
+2. The workflow creates a branch with the PR in winget-pkgs
+3. Review and merge the PR manually (or add a second pipeline to auto-submit)
+4. Accept the CLA if required (comment: `@microsoft-github-policy-service agree`)
 
 ### Subsequent Versions
 

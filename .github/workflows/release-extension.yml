@@ -12,6 +12,9 @@ on:
         required: false
         default: 'New release with latest updates and improvements.'
         type: string
+  push:
+    tags:
+      - 'v*'
 
 env:
   DISPLAY_NAME: PortKill
@@ -64,13 +67,22 @@ jobs:
         Get-ChildItem -Path "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}" -Directory -Filter "*_Test" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
     # -------------------------
-    # 4. BUILD MSIX
+    # 4. BUILD MSIX (with signing)
     # -------------------------
     - name: Build MSIX packages
       shell: pwsh
+      env:
+        CERT_BASE64: ${{ secrets.CERT_BASE64 }}
+        CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
       run: |
+        # Get version from inputs or git tag
+        $version = "${{ github.event.inputs.version }}"
+        if ([string]::IsNullOrEmpty($version)) {
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+        }
+        Write-Host "Building version: $version"
         Set-Location "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}"
-        .\build-msix.ps1 -Version "${{ github.event.inputs.version }}" -Platforms "x64","arm64"
+        .\build-msix.ps1 -Version $version -Platforms "x64","arm64"
 
     # -------------------------
     # 5. CREATE BUNDLE (optional)
@@ -81,11 +93,13 @@ jobs:
         Set-Location "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}"
 
         $version = "${{ github.event.inputs.version }}"
+        if ([string]::IsNullOrEmpty($version)) {
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+        }
 
         $x64 = Get-ChildItem "AppPackages\x64" -Recurse -Filter "*_x64*.msix" | Select-Object -First 1
         $arm = Get-ChildItem "AppPackages\arm64" -Recurse -Filter "*_arm64*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
 
-        # Use relative paths including subdirectories (critical - MSIX files are in subfolders)
         $mapping = "[Files]`n"
         $mapping += "`"AppPackages\x64\$($x64.Name)`" `"$($x64.Name)`"`n"
 
@@ -95,12 +109,10 @@ jobs:
 
         $mapping | Out-File "bundle_mapping.txt" -Encoding UTF8
 
-        # Find makeappx.exe in standard locations
         $makeappx = $null
         $searchPaths = @(
           "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe",
-          "C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\makeappx.exe",
-          "C:\Program Files (x86)\Windows Kits\10\bin\11.*\x64\makeappx.exe"
+          "C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\makeappx.exe"
         )
 
         foreach ($path in $searchPaths) {
@@ -115,24 +127,24 @@ jobs:
           Write-Host "makeappx.exe not found, skipping bundle creation"
         }
 
-    # -------------------------
-    # 6. CREATE GITHUB RELEASE (FIXED)
+# -------------------------
+    # 6. CREATE GITHUB RELEASE
     # -------------------------
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ github.event.inputs.version }}
-        name: "${{ env.DISPLAY_NAME }} v${{ github.event.inputs.version }}"
+        tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref || format('v{0}', github.event.inputs.version) }}
+        name: ${{ format('PortKill v{0}', github.event.inputs.version || github.ref_name) }}
         body: |
-          ## ${{ env.DISPLAY_NAME }} v${{ github.event.inputs.version }}
+          ## PortKill v{{ github.event.inputs.version || github.ref_name }}
 
           ## What's New
-          ${{ github.event.inputs.release_notes }}
+          {{ github.event.inputs.release_notes || 'Automated release from pipeline' }}
 
           ## Installation
-          - **Recommended**: `PortKill_X.X.X.X.msixbundle` (contains all architectures)
-          - x64: `PortKill_X.X.X.X_x64.msix`
-          - ARM64: `PortKill_X.X.X.X_arm64.msix`
+          - **Recommended**: `PortKill_X.X.X.msixbundle` (all architectures)
+          - x64: `PortKill_X.X.X_x64.msix`
+          - ARM64: `PortKill_X.X.X_arm64.msix`
 
         files: |
           ${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/**/*.msix
@@ -141,22 +153,24 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GH_PAT }}
 
     # -------------------------
-    # 7. WINGET UPDATE
+    # 7. WINGETCRETE (prepares PR)
     # -------------------------
     - name: Install wingetcreate
       shell: pwsh
       run: |
         iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
 
-    - name: Update WinGet manifest
+    - name: Prepare WinGet manifest
       shell: pwsh
       env:
         GITHUB_TOKEN: ${{ secrets.GH_PAT }}
       run: |
         $version = "${{ github.event.inputs.version }}"
-        $tag = "v$version"
+        if ([string]::IsNullOrEmpty($version)) {
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+        }
 
-        # Get both architectures from local build
+        $baseUrl = "${{ env.GITHUB_REPO_URL }}/releases/download/v$version"
         $x64 = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/x64" -Recurse -Filter "*_x64*.msix" | Select-Object -First 1
         $arm = Get-ChildItem "${{ env.FOLDER_NAME }}/${{ env.EXTENSION_NAME }}/AppPackages/arm64" -Recurse -Filter "*_arm64*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
 
@@ -165,23 +179,15 @@ jobs:
           exit 1
         }
 
-        $baseUrl = "${{ env.GITHUB_REPO_URL }}/releases/download/$tag"
-
-        # Build URLs - wingetcreate will download from these URLs when running update
         $urls = @()
         $urls += "$baseUrl/$($x64.Name)|x64"
+        if ($arm) { $urls += "$baseUrl/$($arm.Name)|arm64" }
 
-        if ($arm) {
-          $urls += "$baseUrl/$($arm.Name)|arm64"
-        }
-
-        Write-Host "Updating winget manifest..."
+        Write-Host "Preparing winget manifest..."
         Write-Host "URLs: $urls"
 
-        # Use --replace to replace the entire version (fixes EXE → MSIX type change issue)
+        # Generate PR without submitting (pipeline externo hace submit)
         .\wingetcreate.exe update "${{ env.PACKAGE_ID }}" `
           --version $version `
           --urls $urls `
-          --replace `
-          --token "${{ secrets.GH_PAT }}" `
-          --submit
+          --replace
