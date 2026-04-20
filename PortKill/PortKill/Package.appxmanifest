@@ -10,9 +10,9 @@
 
   <Identity
     Name="PortKill"
-    Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    Publisher="CN=JasonTiw"
     Version="0.0.2.0"
-    ProcessorArchitecture="x64" />
+    ProcessorArchitecture="arm64" />
   <!-- When you're ready to publish your extension, you'll need to change the
        Publisher= to match your own identity -->
 
@@ -28,7 +28,7 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate"/>
+    <Resource Language="en-us"/>
   </Resources>
 
   <Applications>

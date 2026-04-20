@@ -2,7 +2,9 @@ param(
     [string]$Version = "0.0.1.0",
     [string[]]$Platforms = @("x64", "arm64"),
     [string]$CertBase64 = $env:CERT_BASE64,
-    [string]$CertPassword = $env:CERT_PASSWORD
+    [string]$CertPassword = $env:CERT_PASSWORD,
+    [string]$CertPath,
+    [string]$CertPass
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,6 +58,10 @@ foreach ($Platform in $Platforms) {
     # Replace Version and ProcessorArchitecture ONLY in <Identity> element (preserves formatting)
     $content = $content -replace '(<Identity[^>]*?)Version="[^"]*"', "`$1Version=`"$Version`""
     $content = $content -replace '(ProcessorArchitecture=")[^"]*"', "`$1$arch`""
+    # Patch Publisher to match your certificate
+    $content = $content -replace '(Publisher=")CN=Microsoft Corporation[^"]*"', '$1CN=JasonTiw"'
+    # Fix invalid language
+    $content = $content -replace 'Language="x-generate"', 'Language="en-us"'
     [System.IO.File]::WriteAllText($AppxManifest, $content, [System.Text.UTF8Encoding]::new($true))
 
     $runtimeId = "win-$Platform"
@@ -82,7 +88,7 @@ foreach ($Platform in $Platforms) {
         continue
     }
 
-    Copy-Item $AppxManifest "$stagingDir\AppxManifest.xml" -Force
+Copy-Item $AppxManifest "$stagingDir\AppxManifest.xml" -Force
 
     $assetsSrc = "$ProjectDir\Assets"
     if (-not (Test-Path "$stagingDir\Assets")) {
@@ -90,10 +96,24 @@ foreach ($Platform in $Platforms) {
     }
 
     $content = Get-Content "$stagingDir\AppxManifest.xml" -Raw
+    
+    # Fix asset paths (add scale suffix)
     $content = $content -replace 'Square150x150Logo="Assets\\[^"]+"', 'Square150x150Logo="Assets\Square150x150Logo.scale-200.png"'
     $content = $content -replace 'Square44x44Logo="Assets\\[^"]+"', 'Square44x44Logo="Assets\Square44x44Logo.scale-200.png"'
     $content = $content -replace 'Wide310x150Logo="Assets\\[^"]+"', 'Wide310x150Logo="Assets\Wide310x150Logo.scale-200.png"'
     $content = $content -replace 'SplashScreen Image="Assets\\[^"]+"', 'SplashScreen Image="Assets\SplashScreen.scale-200.png"'
+    
+    # Check BEFORE fix
+    $beforeLang = ([regex]'(<Resource[^>]*Language=")[^"]+(")').Match($content).Value
+    Write-Host "BEFORE language: $beforeLang" -ForegroundColor Yellow
+    
+    # Fix invalid language - SIMPLE REPLACE
+    $content = $content.Replace('Language="x-generate"', 'Language="en-us"')
+    
+    # Verify AFTER fix
+    $afterLang = ([regex]'(<Resource[^>]*Language=")[^"]+(")').Match($content).Value
+    Write-Host "AFTER language: $afterLang" -ForegroundColor Green
+    
     [System.IO.File]::WriteAllText("$stagingDir\AppxManifest.xml", $content, [System.Text.UTF8Encoding]::new($true))
 
     $packageDir = "$ProjectDir\AppPackages\$Platform"
@@ -115,7 +135,7 @@ foreach ($Platform in $Platforms) {
     }
 
     if ($CertBase64 -and $CertPassword) {
-        Write-Host "Signing MSIX..." -ForegroundColor Yellow
+        Write-Host "Signing MSIX with base64 cert..." -ForegroundColor Yellow
 
         $tempCert = "$ProjectDir\temp_signing.pfx"
         [System.IO.File]::WriteAllBytes($tempCert, [Convert]::FromBase64String($CertBase64))
@@ -127,8 +147,16 @@ foreach ($Platform in $Platforms) {
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Signing failed, but MSIX was created."
         }
+    } elseif ($CertPath -and $CertPass) {
+        Write-Host "Signing MSIX with cert file..." -ForegroundColor Yellow
+
+        & $signtool sign /fd SHA256 /f $CertPath /p $CertPass $msixPath
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Signing failed, but MSIX was created."
+        }
     } else {
-        Write-Host "No certificate provided - MSIX unsigned (set CERT_BASE64 and CERT_PASSWORD env vars)" -ForegroundColor Yellow
+        Write-Host "No certificate provided - MSIX unsigned (set CERT_BASE64/CERT_PASSWORD env vars or -CertPath/-CertPass)" -ForegroundColor Yellow
     }
 
     $msix = Get-Item $msixPath

@@ -374,3 +374,5 @@ setup-arm64.iss
 
 # MSIX packages (generated)
 AppPackages/
+*.msixbundle
+manifests/
