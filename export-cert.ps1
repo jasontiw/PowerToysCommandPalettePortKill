@@ -5,7 +5,7 @@
     Exports existing certificate or creates new one.
     Uses dynamic paths based on script location.
 .PARAMETER Subject
-    Certificate subject. Default: CN=JasonTiw.
+    Certificate subject. Default: CN=4C4372AF-9C35-4D16-BA6B-7FD6D3CB0870.
 .PARAMETER OutputPath
     Output path for PFX. Default: auto-detect.
 .PARAMETER Password
@@ -14,7 +14,7 @@
 
 param(
     [Parameter()]
-    [string]$Subject = "CN=JasonTiw",
+    [string]$Subject = "CN=4C4372AF-9C35-4D16-BA6B-7FD6D3CB0870",
     
     [Parameter()]
     [string]$OutputPath,

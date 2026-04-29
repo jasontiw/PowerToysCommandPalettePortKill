@@ -9,22 +9,22 @@
   IgnorableNamespaces="uap uap3 rescap">
 
   <Identity
-    Name="PortKill"
-    Publisher="CN=JasonTiw"
+    Name="JasonTiw.PortKillforCommandPalette"
+    Publisher="CN=4C4372AF-9C35-4D16-BA6B-7FD6D3CB0870"
     Version="0.0.2.0"
-    ProcessorArchitecture="arm64" />
+    ProcessorArchitecture="x64" />
   <!-- When you're ready to publish your extension, you'll need to change the
        Publisher= to match your own identity -->
 
   <Properties>
-    <DisplayName>PortKill</DisplayName>
-    <PublisherDisplayName>A Lone Developer</PublisherDisplayName>
+    <DisplayName>PortKill for Command Palette</DisplayName>
+    <PublisherDisplayName>JasonTiw</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.19041.0" />
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.19041.0" />
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.19041.0" />
   </Dependencies>
 
   <Resources>
@@ -47,7 +47,8 @@
       <Extensions>
         <com:Extension Category="windows.comServer">
           <com:ComServer>
-            <com:ExeServer Executable="PortKill.exe" Arguments="-RegisterProcessAsComServer" DisplayName="PortKill">
+            <com:ExeServer Executable="PortKill.exe" Arguments="-RegisterProcessAsComServer"
+              DisplayName="PortKill">
               <com:Class Id="f1172d0c-c4f4-4a1a-9560-e949e8993e17" DisplayName="PortKill" />
             </com:ExeServer>
           </com:ComServer>
