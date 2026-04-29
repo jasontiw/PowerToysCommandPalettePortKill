@@ -1,4 +1,4 @@
 [Files]
-"AppPackages\x64\PortKill_0.0.2.0_x64.msix" "PortKill_0.0.2.0_x64.msix"
-"AppPackages\arm64\PortKill_0.0.2.0_arm64.msix" "PortKill_0.0.2.0_arm64.msix"
+"AppPackages\x64\PortKill_0.0.3.0_x64.msix" "PortKill_0.0.3.0_x64.msix"
+"AppPackages\arm64\PortKill_0.0.3.0_arm64.msix" "PortKill_0.0.3.0_arm64.msix"
 

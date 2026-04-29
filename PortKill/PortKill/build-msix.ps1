@@ -110,6 +110,9 @@ foreach ($Platform in $Platforms) {
 
     $content = Get-Content "$stagingDir\AppxManifest.xml" -Raw
     
+    # Fix version from parameter (only in Identity element)
+    $content = [regex]::Replace($content, '(Identity[^>]*Version=")[^"]+(")', "`${1}$Version`${2}", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    
 # Fix asset paths (add scale suffix)
     $content = $content -replace 'Square150x150Logo="Assets\\[^"]+"', 'Square150x150Logo="Assets\Square150x150Logo.scale-200.png"'
     $content = $content -replace 'Square44x44Logo="Assets\\[^"]+"', 'Square44x44Logo="Assets\Square44x44Logo.scale-200.png"'
@@ -189,6 +192,14 @@ Remove-Item $AppxManifestBackup -Force -ErrorAction SilentlyContinue
 Write-Host "`n=== Creating Bundle ===" -ForegroundColor Green
 
 $bundleMapping = "$ProjectDir\bundle_mapping.txt"
+
+# Clean up old bundle files before creating new ones
+$oldBundles = Get-ChildItem "$ProjectDir\*.msixbundle" -ErrorAction SilentlyContinue
+foreach ($old in $oldBundles) {
+    Write-Host "Removing old bundle: $($old.Name)" -ForegroundColor Cyan
+    Remove-Item $old.FullName -Force
+}
+
 $bundleContent = "[Files]`n"
 
 foreach ($Platform in $Platforms) {
@@ -202,6 +213,11 @@ foreach ($Platform in $Platforms) {
 }
 
 $bundleContent | Set-Content $bundleMapping -Encoding UTF8
+
+# Clean up old bundle mapping files
+Get-ChildItem "$ProjectDir\bundle_mapping*.txt" -ErrorAction SilentlyContinue | 
+    Where-Object { $_.Name -ne "bundle_mapping.txt" } | 
+    ForEach-Object { Remove-Item $_.FullName -Force }
 
 $bundleName = "${ExtensionName}_${Version}_Bundle.msixbundle"
 $bundlePath = "$ProjectDir\$bundleName"
