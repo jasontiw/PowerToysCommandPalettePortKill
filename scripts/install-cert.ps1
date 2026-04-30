@@ -20,27 +20,21 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Detect project root (supports scripts at project root or in scripts subdirectory)
+# Detect project root
+# If we're in scripts subdirectory, go up one level
 $ProjectRoot = $PSScriptRoot
-if (-not (Test-Path (Join-Path $PSScriptRoot "PortKill"))) {
-    $parent = Split-Path $PSScriptRoot -Parent
-    if ($parent -and (Test-Path (Join-Path $parent "PortKill"))) {
-        $ProjectRoot = $parent
-    }
-}
-# If PortKill subdirectory exists, use it as project root (nested project structure)
-if (Test-Path (Join-Path $ProjectRoot "PortKill\PortKill")) {
-    $ProjectRoot = Join-Path $ProjectRoot "PortKill"
+if ($ProjectRoot -match "[\\/]scripts$") {
+    $ProjectRoot = Split-Path $PSScriptRoot -Parent
 }
 
 Write-Host "Project root: $ProjectRoot" -ForegroundColor Cyan
 
 # Find certificate if not specified
 if (-not $CertPath) {
-    # Search in PortKill subdirectory
+    # Search in PortKill directory
     $searchPaths = @(
         (Join-Path $ProjectRoot "PortKill\*.pfx"),
-        (Join-Path $ProjectRoot "*.pfx")
+        (Join-Path $ProjectRoot "PortKill\PortKill\*.pfx")
     )
     
     foreach ($pattern in $searchPaths) {

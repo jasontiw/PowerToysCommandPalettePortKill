@@ -31,13 +31,13 @@ Quickly find and kill processes blocking TCP ports on Windows.
 ### Generate Signing Certificate
 
 ```powershell
-cd PortKill
+cd scripts
 
 # Create and export certificate
-..\export-cert.ps1 -Password "Publisher2026!"
+.\export-cert.ps1 -Password "Publisher2026!"
 
 # Install to Trusted People store
-..\install-cert.ps1 -Password "Publisher2026!"
+.\install-cert.ps1 -Password "Publisher2026!"
 ```
 
 ### Build MSIX

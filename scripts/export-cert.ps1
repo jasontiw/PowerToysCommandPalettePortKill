@@ -25,27 +25,20 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Detect project root (supports scripts at project root or in scripts subdirectory)
+# Detect project root
+# If we're in scripts subdirectory, go up one level
 $ProjectRoot = $PSScriptRoot
-if (-not (Test-Path (Join-Path $PSScriptRoot "PortKill"))) {
-    $parent = Split-Path $PSScriptRoot -Parent
-    if ($parent -and (Test-Path (Join-Path $parent "PortKill"))) {
-        $ProjectRoot = $parent
-    }
-}
-# If PortKill subdirectory exists, use it as project root (nested project structure)
-if (Test-Path (Join-Path $ProjectRoot "PortKill\PortKill")) {
-    $ProjectRoot = Join-Path $ProjectRoot "PortKill"
+if ($ProjectRoot -match "[\\/]scripts$") {
+    $ProjectRoot = Split-Path $PSScriptRoot -Parent
 }
 
 Write-Host "Project root: $ProjectRoot" -ForegroundColor Cyan
 
 # Default output path
 if (-not $OutputPath) {
-    $OutputPath = Join-Path $ProjectRoot "PortKill\$Subject.pfx"
-    $OutputPath = $OutputPath -replace "=", ""  # Remove = from CN
-    $OutputPath = $OutputPath -replace ",", ""
-    $OutputPath = $OutputPath -replace " ", "_"
+    # Output to PortKill/PublisherCert.pfx (relative to project root)
+    # build-msix.ps1 expects ../PublisherCert.pfx from PortKill/PortKill/
+    $OutputPath = Join-Path $ProjectRoot "PortKill\PublisherCert.pfx"
 }
 
 $OutputDir = Split-Path $OutputPath -Parent
