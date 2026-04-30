@@ -13,6 +13,7 @@
 
     <WindowsPackageType>MSIX</WindowsPackageType>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
     <Nullable>enable</Nullable>
     <AppxProcessorArchitecture>x64</AppxProcessorArchitecture>
 	<AppxPackageIdentityName>JasonTiw.PortKillforCommandPalette</AppxPackageIdentityName>

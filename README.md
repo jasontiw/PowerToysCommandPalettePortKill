@@ -44,7 +44,7 @@ cd scripts
 
 ```powershell
 cd PortKill/PortKill
-.\build-msix.ps1 -Version "0.0.3.0" -CertPath "../PublisherCert.pfx" -CertPass "Publisher2026!"
+pwsh -NoProfile -File .\build-msix.ps1 -Version "0.0.3.0" -CertPath "../PublisherCert.pfx" -CertPass "Publisher2026!"
 ```
 
 Output in: `AppPackages/`

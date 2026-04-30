@@ -84,8 +84,9 @@ foreach ($Platform in $Platforms) {
         -p:PublishDir="$stagingDir\" `
         -p:PublishTrimmed=false `
         -p:Version=$Version `
-        -p:WindowsPackageType=MSIX `
-        -p:EnableMsixTooling=true `
+        -p:GenerateAppxPackageOnBuild=false `
+        -p:EnableMsixTooling=false `
+        -p:WindowsPackageType=None `
         -p:AppxPackageIdentityName=$IdentityName `
         -p:AppxPackagePublisher=$Publisher `
         -p:AppxProcessorArchitecture=$Platform `
