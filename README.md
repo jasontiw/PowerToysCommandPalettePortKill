@@ -1,267 +1,60 @@
-# Port Kill - PowerToys Command Palette Extension
+# PortKill - PowerToys Command Palette Extension
+
+<a href="https://apps.microsoft.com/detail/9nmfqzvgr1dh?hl=en-us&gl=CO">
+  <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="150" alt="Get PortKill from Microsoft Store"/>
+</a>
 
 ![Port Kill Demo](docs/App-UI.gif)
 
-A Command Palette extension for Microsoft PowerToys that allows developers to quickly find and kill processes blocking TCP ports on Windows.
-
-## Features
-
-- **List Active Ports** - View all TCP/UDP ports currently in use with process information, and kill any process directly
-- **Kill by Process Name** - Kill all processes matching a name (e.g., node, python)
-- **Common ports** - Quick view of frequently used development ports (3000, 4200, 5000, 5173, 8000, 8080, 9000)
-- **Confirmation Dialog** - Shows process details (PID, memory, path, start time) before killing
-- **System Process Protection** - Prevents accidental killing of critical system processes
-- **Dock Integration** - Shows port status in the PowerToys Dock with visual indicators (✓ free, ✗ occupied)
+Quickly find and kill processes blocking TCP ports on Windows.
 
 ## Requirements
 
 - Windows 10 version 2004 (build 19041) or later
 - PowerToys with Command Palette enabled
-- Visual Studio 2022+ with:
-  - .NET desktop development workload
-  - Windows application development workload (WinUI)
 - Developer Mode enabled in Windows Settings
 
 ## Quick Start
 
-### Prerequisites
-
-1. **Install PowerToys** from Microsoft Store or GitHub
-2. **Enable Developer Mode**:
-   - Open Settings > Privacy & security > For developers
-   - Enable "Developer Mode"
-3. **Install Visual Studio 2022+** with required workloads
-
-### Building and Deploying
-
-1. Open the solution in Visual Studio:
-   ```
-   cd PortKill
-   start PortKill.sln
-   ```
-
-2. Select your target platform:
-   - `x64` for 64-bit Windows
-   - `ARM64` for ARM devices
-
-3. **Deploy** the extension (not just build):
-   - Go to **Build** > **Deploy PortKill**
-   - Or press `Ctrl + B` then confirm deployment
-
-   > **Important**: Building alone (`Ctrl + Shift + B`) is not enough. You must deploy for PowerToys to detect the extension.
-
-### Via Command Palette (Win+Alt+Space)
-
-1. Press **Win + Alt + Space** to open Command Palette
-2. Type "Reload" and select "Reload Command Palette Extension"
-
-5. Find the extension:
-   - Type "Port Kill" in the Command Palette
-   - You'll see the main menu with options
+1. Open `PortKill/PortKill.sln` in Visual Studio
+2. Select `Debug | x64` configuration
+3. **Build > Deploy** (F5) - Deployment is required, not just build
+4. Press **Win + Alt + Space** and type "Reload" to load the extension
 
 ## Usage
 
-### Via Command Palette
+- **Win + Alt + Space** - Open Command Palette
+- Type "Port Kill" to see available commands
 
-1. Press **Win + Alt + Space** to open Command Palette
-2. Type "Port Kill" to see available commands:
-   - **List active ports** - Shows all ports in use, allows killing any process
-   - **Common ports** - Quick view of dev ports
+## Local Build (Testing)
 
-### Via Dock
+### Generate Signing Certificate
 
-The Dock shows common development ports at the bottom of your screen:
-- **✓** (green) - Port is free
-- **✗** (red) - Port is occupied (click to kill)
+```powershell
+cd PortKill
 
-## Project Structure
+# Create and export certificate
+..\export-cert.ps1 -Password "Publisher2026!"
 
-```
-PortKill/
-├── PortKill.sln
-├── Directory.Build.props
-├── Directory.Packages.props
-├── nuget.config
-└── PortKill/
-    ├── Program.cs                    # Entry point
-    ├── PortKill.cs                   # Extension implementation
-    ├── PortKillCommandsProvider.cs    # Command provider
-    ├── PortKill.csproj
-    ├── app.manifest
-    ├── Package.appxmanifest
-    ├── Assets/                       # Icons and images
-    ├── Commands/
-    │   ├── KillProcessCommand.cs     # Kill process logic
-    │   └── NoOpCommand.cs            # Placeholder command
-    ├── Dock/
-    │   └── PortKillDockBand.cs       # Dock integration
-    ├── Models/
-    │   ├── KillResult.cs              # Kill operation results
-    │   ├── PortInfo.cs                # Port data model
-    │   ├── PortProcessEntry.cs        # Combined port+process
-    │   └── ProcessInfo.cs            # Process data model
-    ├── Pages/
-    │   ├── CommonDevPortsPage.cs      # Common ports view
-    │   ├── ConfirmKillPage.cs         # Kill confirmation
-    │   ├── KillPortPage.cs            # Kill by port
-    │   ├── ListPortsPage.cs           # List all ports
-    │   └── PortKillPage.cs            # Main menu
-    └── Services/
-        └── PortService.cs             # Core port/process logic
+# Install to Trusted People store
+..\install-cert.ps1 -Password "Publisher2026!"
 ```
 
-## How It Works
-
-### Port Detection
-Uses `netstat -ano` to get accurate PID-to-port mapping, which is more reliable than .NET APIs for this use case.
-
-### Process Information
-Retrieves process details including:
-- Process name
-- Memory usage (Working Set)
-- Start time
-- Executable path
-
-### System Protection
-Prevents killing critical system processes like:
-- System, csrss, wininit, lsass, services
-- PID 0 (Idle) and PID 4 (System)
-
-## Development
-
-### Making Changes
-
-1. Make your code changes
-2. **Deploy** again (Build > Deploy)
-3. Reload Command Palette (type "Reload")
-4. Test your changes
-
-### Troubleshooting
-
-**Extension not showing up:**
-- Make sure you deployed, not just built
-- Try reloading: type "Reload" in Command Palette
-- Check Developer Mode is enabled
-
-**Can't kill process:**
-- Some processes require admin privileges
-- System processes are protected by design
-
-**Ports not updating:**
-- Click refresh in the Dock
-- Reopen the port list in Command Palette
-
-## References
-
-- [PowerToys Command Palette Documentation](https://learn.microsoft.com/en-us/windows/powertoys/command-palette/)
-- [Creating Extensions](https://learn.microsoft.com/en-us/windows/powertoys/command-palette/creating-an-extension)
-- [Extension Samples](https://learn.microsoft.com/en-us/windows/powertoys/command-palette/samples)
-- [PowerToys GitHub](https://github.com/microsoft/PowerToys)
-
-## Publishing to WinGet
-
-This extension can be distributed via WinGet. WinGet enables automatic discovery and installation directly within Command Palette.
-
-### Prerequisites
-
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) (for makeappx.exe)
-- GitHub CLI (`gh`)
-
-### Local Build (Testing)
-
-To build MSIX packages locally:
+### Build MSIX
 
 ```powershell
 cd PortKill/PortKill
-
-# Without signing (for testing only)
-.\build-msix.ps1 -Version "0.0.2.0"
-
-# With signing (requires certificate)
-$env:CERT_BASE64 = "your-certificate-base64"
-$env:CERT_PASSWORD = "your-cert-password"
-.\build-msix.ps1 -Version "0.0.2.0"
+.\build-msix.ps1 -Version "0.0.3.0" -CertPath "../PublisherCert.pfx" -CertPass "Publisher2026!"
 ```
 
-By default builds both platforms (x64 and arm64). To build specific platforms:
-```powershell
-.\build-msix.ps1 -Version "0.0.2.0" -Platforms "x64"
-```
+Output in: `AppPackages/`
 
-This creates:
-- `AppPackages\x64\*_x64.msix` (Intel/AMD)
-- `AppPackages\arm64\*_arm64.msix` (ARM64)
-- `*.msixbundle` (combined bundle)
+## Troubleshooting
 
-### Installing the MSIX
-
-1. Double-click the MSIX file to install
-2. Open Command Palette (**Win + Alt + Space**)
-3. Type 'Reload' and select 'Reload Command Palette Extension'
-
-### Release Process (GitHub Actions)
-
-The repository includes `.github/workflows/release-extension.yml` that automatically:
-1. Builds MSIX packages for x64 and ARM64
-2. Signs the MSIX (requires GitHub Secrets)
-3. Creates an MSIX bundle
-4. Publishes a GitHub Release with the MSIX files
-5. Creates WinGet PR (without auto-submit)
-
-**Trigger options:**
-
-Option 1 - Git tag (recommended):
-```powershell
-git tag v0.0.2.0
-git push origin v0.0.2.0
-```
-
-Option 2 - GitHub workflow dispatch:
-```powershell
-gh workflow run release-extension.yml -f version="0.0.2.0" -f release_notes="What's new"
-```
-
-Or manually via GitHub:
-1. Go to: Actions > Release Extension > Run workflow
-2. Enter version number (e.g., 0.0.2.0)
-3. Add release notes
-4. Click "Run workflow"
-
-**Requirements (GitHub Secrets):**
-- `CERT_BASE64` - Certificate (.pfx) encoded in Base64
-- `CERT_PASSWORD` - Certificate password
-- `GH_PAT` - GitHub token with repo scope
-
-### First Time Setup
-
-1. Create initial release and MSIX packages via GitHub Actions
-2. The workflow creates a branch with the PR in winget-pkgs
-3. Review and merge the PR manually (or add a second pipeline to auto-submit)
-4. Accept the CLA if required (comment: `@microsoft-github-policy-service agree`)
-
-### Subsequent Versions
-
-After the first submission, just run:
-
-```powershell
-gh workflow run release-extension.yml -f version="0.0.2.0" -f release_notes="Bug fixes and improvements"
-```
-
-The workflow automatically updates the WinGet manifest and creates a PR in microsoft/winget-pkgs.
-
-### WinGet Manifest Requirements
-
-The manifest automatically includes:
-- `windows-commandpalette-extension` tag for Command Palette discovery
-- Both x64 and ARM64 architectures
-- MSIX installer type
-- Windows App SDK dependency
+- **Extension not showing**: Make sure you deployed (not just built), then type "Reload" in Command Palette
+- **Can't kill process**: Some require admin privileges
+- **VS Deploy error DEP1700**: Run as Administrator
 
 ## License
 
-MIT License - See LICENSE file for details.
-
-## Acknowledgments
-
-Inspired by [port-kill](https://github.com/treadiehq/port-kill) - A Rust CLI tool with similar functionality.
+MIT License
