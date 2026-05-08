@@ -7,10 +7,11 @@
 using PortKill.Models;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Threading;
+using System.Timers;
 
 namespace PortKill.Services;
 
@@ -24,11 +25,17 @@ public sealed partial class PortService : IDisposable
     private static readonly Lazy<PortService> _instance = new(() => new PortService());
 
     /// <summary>
-    /// Disposes the cache lock.
+    /// Disposes resources including the refresh timer.
     /// </summary>
     public void Dispose()
     {
-        _cacheLock?.Dispose();
+        // Stop the refresh timer
+        if (_refreshTimer != null)
+        {
+            _refreshTimer.Stop();
+            _refreshTimer.Dispose();
+            _refreshTimer = null;
+        }
     }
 
     /// <summary>
@@ -51,117 +58,152 @@ public sealed partial class PortService : IDisposable
     /// </summary>
     private static readonly HashSet<int> SystemPids = new() { 0, 4 };
 
-    #region Cache Implementation
+    /// <summary>
+    /// Observable collection of port entries for UI binding.
+    /// Auto-refreshes every 3 seconds.
+    /// </summary>
+    public ObservableCollection<PortProcessEntry> Ports { get; } = [];
 
     /// <summary>
-    /// Cache entry storing port data and timestamp.
+    /// Timer for auto-refresh of port data.
     /// </summary>
-    private (List<PortProcessEntry> Data, DateTime Timestamp)? _cache;
+    private System.Timers.Timer? _refreshTimer;
 
     /// <summary>
-    /// Time-to-live for cached port data. Default: 3 seconds.
+    /// Interval for auto-refresh in seconds.
+    /// 5 seconds balances freshness with low resource usage.
     /// </summary>
-    private readonly TimeSpan _cacheTtl = TimeSpan.FromSeconds(3);
+    private const int RefreshIntervalSeconds = 5;
 
     /// <summary>
-    /// Lock for thread-safe cache access. Allows concurrent readers, exclusive writer.
+    /// Flag to track if refresh is already running (prevents concurrent refreshes).
     /// </summary>
-    private readonly ReaderWriterLockSlim _cacheLock = new(LockRecursionPolicy.NoRecursion);
+    private bool _isRefreshing;
 
     /// <summary>
-    /// Checks if the cache is valid (exists and not expired).
+    /// Timestamp of the last refresh.
     /// </summary>
-    private bool IsCacheValid()
+    private DateTime _lastRefreshTime = DateTime.MinValue;
+
+    /// <summary>
+    /// Minimum interval between forced refreshes (in seconds).
+    /// </summary>
+    private const int MinimumRefreshIntervalSeconds = 2;
+
+    private PortService()
     {
-        return _cache.HasValue && 
-               DateTime.UtcNow - _cache.Value.Timestamp < _cacheTtl;
+        // Load initial data immediately so ports are visible on first open
+        RefreshPorts();
+
+        // Start auto-refresh
+        StartAutoRefresh();
     }
 
     /// <summary>
-    /// Fetches fresh port data from netstat and updates the cache.
-    /// Must be called with write lock held.
+    /// Forces a refresh if enough time has passed since the last refresh.
+    /// Call this from GetItems() to ensure fresh data when user opens the page.
     /// </summary>
-    private List<PortProcessEntry> FetchAndCachePorts()
+    public void RefreshIfNeeded()
     {
-        var entries = FetchPortsFromNetstat();
-        _cache = (entries, DateTime.UtcNow);
-        return entries;
+        var secondsSinceLastRefresh = (DateTime.UtcNow - _lastRefreshTime).TotalSeconds;
+        if (secondsSinceLastRefresh >= MinimumRefreshIntervalSeconds)
+        {
+            RefreshPorts();
+        }
     }
 
     /// <summary>
-    /// Invalidates the cache. Call after operations that need fresh data.
+    /// Starts the auto-refresh timer to update port data periodically.
     /// </summary>
-    public void InvalidateCache()
+    private void StartAutoRefresh()
     {
-        _cacheLock.EnterWriteLock();
+        _refreshTimer = new System.Timers.Timer(RefreshIntervalSeconds * 1000);
+        _refreshTimer.Elapsed += OnRefreshTimerElapsed;
+        _refreshTimer.AutoReset = true;
+        _refreshTimer.Start();
+    }
+
+    /// <summary>
+    /// Starts the refresh timer (call when Command Palette opens).
+    /// </summary>
+    public void StartRefresh()
+    {
+        if (_refreshTimer != null && !_refreshTimer.Enabled)
+        {
+            _refreshTimer.Start();
+        }
+    }
+
+    /// <summary>
+    /// Stops the refresh timer (call when Command Palette closes).
+    /// </summary>
+    public void StopRefresh()
+    {
+        _refreshTimer?.Stop();
+    }
+
+    /// <summary>
+    /// Handler for the refresh timer elapsed.
+    /// </summary>
+    private void OnRefreshTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        // Prevent concurrent refreshes
+        if (_isRefreshing)
+            return;
+
+        _isRefreshing = true;
         try
         {
-            _cache = null;
+            RefreshPorts();
         }
         finally
         {
-            _cacheLock.ExitWriteLock();
+            _isRefreshing = false;
         }
     }
 
-    #endregion
+    /// <summary>
+    /// Refreshes the port data by fetching from netstat and updating the ObservableCollection.
+    /// </summary>
+    public void RefreshPorts()
+    {
+        // Fetch fresh data
+        var entries = FetchPortsFromNetstat();
 
-    private PortService() { }
+        // Update the ObservableCollection
+        Ports.Clear();
+        foreach (var entry in entries)
+        {
+            Ports.Add(entry);
+        }
+
+        // Update last refresh timestamp
+        _lastRefreshTime = DateTime.UtcNow;
+    }
 
     /// <summary>
-    /// Gets all active TCP ports with associated process information.
-    /// Uses TTL-based caching to reduce netstat spawn frequency.
+    /// Gets all active TCP/UDP ports from the ObservableCollection.
     /// </summary>
     /// <returns>List of port-process entries.</returns>
     public List<PortProcessEntry> GetActivePorts()
     {
-        // Try to get from cache first (read lock - allows concurrent readers)
-        _cacheLock.EnterReadLock();
-        try
-        {
-            if (IsCacheValid())
-            {
-                return _cache!.Value.Data;
-            }
-        }
-        finally
-        {
-            _cacheLock.ExitReadLock();
-        }
-
-        // Cache miss - acquire write lock and fetch fresh data
-        _cacheLock.EnterWriteLock();
-        try
-        {
-            // Double-check after acquiring write lock (another thread may have updated)
-            if (!IsCacheValid())
-            {
-                return FetchAndCachePorts();
-            }
-            return _cache!.Value.Data;
-        }
-        finally
-        {
-            _cacheLock.ExitWriteLock();
-        }
+        return Ports.ToList();
     }
 
     /// <summary>
     /// Gets port-process entries filtered by port number.
-    /// Uses cached data when available.
     /// </summary>
     /// <param name="port">The port number to filter by.</param>
     /// <returns>Matching entries.</returns>
     public List<PortProcessEntry> GetProcessByPort(int port)
     {
-        return GetActivePorts()
+        return Ports
             .Where(e => e.Port.Port == port)
             .ToList();
     }
 
     /// <summary>
     /// Gets port-process entries filtered by process name (partial, case-insensitive match).
-    /// Uses cached data when available.
     /// </summary>
     /// <param name="name">The process name or partial name to search for.</param>
     /// <returns>Matching entries.</returns>
@@ -170,7 +212,7 @@ public sealed partial class PortService : IDisposable
         if (string.IsNullOrWhiteSpace(name))
             return [];
 
-        return GetActivePorts()
+        return Ports
             .Where(e => e.Process?.Name?.Contains(name, StringComparison.OrdinalIgnoreCase) == true)
             .ToList();
     }
@@ -209,8 +251,8 @@ public sealed partial class PortService : IDisposable
             var process = Process.GetProcessById(pid);
             process.Kill();
 
-            // Invalidate cache after successful kill
-            InvalidateCache();
+            // Refresh ports immediately after successful kill
+            RefreshPorts();
 
             return KillResult.Success;
         }

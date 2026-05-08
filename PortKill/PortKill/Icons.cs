@@ -19,6 +19,7 @@ internal static class Icons
     internal static IconInfo BackIcon { get; } = new("\uE72B");
     internal static IconInfo CancelIcon { get; } = new("\uE711");
     internal static IconInfo CopyIcon { get; } = new("\xE8C8");
+    internal static IconInfo TagIcon { get; } = new("\uE8EC");
 
     // Fluent UI icons (using light/dark theme variants)
     internal static IconInfo Copy { get; } = Create("ic_fluent_copy_20_regular");
