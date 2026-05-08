@@ -51,22 +51,9 @@ Write-Host "Using makeappx: $($makeappx.FullName)" -ForegroundColor Cyan
 
 $AppManifest = "$ProjectDir\app.manifest"
 $AppxManifest = "$ProjectDir\Package.appxmanifest"
-$AppxManifestBackup = "$ProjectDir\Package.appxmanifest.backup"
-
-if (Test-Path $AppxManifestBackup) {
-    Remove-Item $AppxManifestBackup -Force
-}
-Copy-Item $AppxManifest $AppxManifestBackup
 
 foreach ($Platform in $Platforms) {
     Write-Host "`n=== Building $Platform ===" -ForegroundColor Cyan
-
-    # Backup and remove AppxManifest so dotnet publish uses only csproj properties
-    $AppxManifestBackup = "$ProjectDir\Package.appxmanifest.backup"
-    if (Test-Path $AppxManifest) {
-        if (Test-Path $AppxManifestBackup) { Remove-Item $AppxManifestBackup -Force }
-        Move-Item $AppxManifest $AppxManifestBackup
-    }
 
     $runtimeId = "win-$Platform"
     $stagingDir = "$ProjectDir\bin\staging\$Platform"
@@ -85,24 +72,42 @@ foreach ($Platform in $Platforms) {
         -p:PublishTrimmed=false `
         -p:Version=$Version `
         -p:GenerateAppxPackageOnBuild=false `
-        -p:EnableMsixTooling=false `
-        -p:WindowsPackageType=None `
+        -p:EnableMsixTooling=true `
         -p:AppxPackageIdentityName=$IdentityName `
         -p:AppxPackagePublisher=$Publisher `
         -p:AppxProcessorArchitecture=$Platform `
-        -p:TargetPlatform=$Platform
+        -p:AppxBundle=Never `
+        -p:AppxBundlePlatforms=$Platform
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Build failed for $Platform"
         continue
     }
 
-    # Restore AppxManifest after publish (backup exists for next platform)
-    if (-not (Test-Path $AppxManifest) -and (Test-Path $AppxManifestBackup)) {
-        Move-Item $AppxManifestBackup $AppxManifest
+    # Check if dotnet publish generated AppxManifest.xml in staging root
+    $generatedManifest = "$stagingDir\AppxManifest.xml"
+    if (-not (Test-Path $generatedManifest)) {
+        # Try other common locations where dotnet might generate it
+        $altPaths = @(
+            "$stagingDir\bin\AppxManifest.xml",
+            "$ProjectDir\bin\AppxManifest.xml",
+            "$ProjectDir\bin\staging\AppxManifest.xml"
+        )
+        foreach ($alt in $altPaths) {
+            if (Test-Path $alt) {
+                Copy-Item $alt $generatedManifest -Force
+                Write-Host "Found generated manifest at: $alt" -ForegroundColor Green
+                break
+            }
+        }
+        
+        if (-not (Test-Path $generatedManifest)) {
+            Write-Host "No generated manifest found, using base manifest" -ForegroundColor Yellow
+            Copy-Item $AppxManifest $generatedManifest -Force
+        }
+    } else {
+        Write-Host "Using generated manifest from dotnet publish" -ForegroundColor Green
     }
-
-    Copy-Item $AppxManifest "$stagingDir\AppxManifest.xml" -Force
 
     $assetsSrc = "$ProjectDir\Assets"
     if (-not (Test-Path "$stagingDir\Assets")) {
@@ -114,7 +119,19 @@ foreach ($Platform in $Platforms) {
     # Fix version from parameter (only in Identity element)
     $content = [regex]::Replace($content, '(Identity[^>]*Version=")[^"]+(")', "`${1}$Version`${2}", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
     
-# Fix asset paths (add scale suffix)
+# Fix placeholders (in case using base manifest)
+    $content = $content -replace '\$targetnametoken\$', 'PortKill'
+    $content = $content -replace '\$targetentrypoint\$', 'Windows.FullTrustApplication'
+    
+    # Add ProcessorArchitecture if missing (base manifest doesn't have it)
+    $arch = if ($Platform -eq "arm64") { "arm64" } else { "x64" }
+    if ($content -notlike '*ProcessorArchitecture*') {
+        Write-Host "Adding ProcessorArchitecture=$arch to manifest" -ForegroundColor Yellow
+        # Add before the closing /> of the Identity element
+        $content = $content -replace '(<Identity[^>]+)/>', "`$1 ProcessorArchitecture=""$arch"" />"
+    }
+    
+    # Fix asset paths (add scale suffix)
     $content = $content -replace 'Square150x150Logo="Assets\\[^"]+"', 'Square150x150Logo="Assets\Square150x150Logo.scale-200.png"'
     $content = $content -replace 'Square44x44Logo="Assets\\[^"]+"', 'Square44x44Logo="Assets\Square44x44Logo.scale-200.png"'
     $content = $content -replace 'Wide310x150Logo="Assets\\[^"]+"', 'Wide310x150Logo="Assets\Wide310x150Logo.scale-200.png"'
@@ -126,10 +143,6 @@ foreach ($Platform in $Platforms) {
     
     # Fix invalid language
     $content = $content.Replace('Language="x-generate"', 'Language="en-us"')
-    
-    # Fix ProcessorArchitecture - ensure it matches the current platform
-    $arch = if ($Platform -eq "arm64") { "arm64" } else { "x64" }
-    $content = $content -replace 'ProcessorArchitecture="[^"]*"', "ProcessorArchitecture=""$arch"""
     
     # Verify AFTER fix
     $afterLang = ([regex]'(<Resource[^>]*Language=")[^"]+(")').Match($content).Value
@@ -148,7 +161,8 @@ foreach ($Platform in $Platforms) {
 
     Write-Host "Creating MSIX..." -ForegroundColor Yellow
 
-    & $makeappx pack /d $stagingDir /p $msixPath /nv
+    # makeappx will add ProcessorArchitecture from the manifest, no manual override needed
+    & $makeappx pack /d $stagingDir /p $msixPath /o
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to create MSIX. Exit code: $LASTEXITCODE"
@@ -186,8 +200,6 @@ foreach ($Platform in $Platforms) {
 
     Remove-Item $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
 }
-
-Remove-Item $AppxManifestBackup -Force -ErrorAction SilentlyContinue
 
 # === GENERATE BUNDLE ===
 Write-Host "`n=== Creating Bundle ===" -ForegroundColor Green

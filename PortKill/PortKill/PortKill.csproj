@@ -16,9 +16,9 @@
     <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
     <Nullable>enable</Nullable>
     <AppxProcessorArchitecture>x64</AppxProcessorArchitecture>
-	<AppxPackageIdentityName>JasonTiw.PortKillforCommandPalette</AppxPackageIdentityName>
-	<AppxPackagePublisher>CN=4C4372AF-9C35-4D16-BA6B-7FD6D3CB0870</AppxPackagePublisher>
-	<AppxPackageVersion>$(Version)</AppxPackageVersion>
+    <AppxPackageIdentityName>JasonTiw.PortKillforCommandPalette</AppxPackageIdentityName>
+    <AppxPackagePublisher>CN=4C4372AF-9C35-4D16-BA6B-7FD6D3CB0870</AppxPackagePublisher>
+    <AppxPackageVersion>$(Version)</AppxPackageVersion>
 	
 	<!-- Bundle configuration for Microsoft Store -->
 	<AppxBundle>Always</AppxBundle>
