@@ -36,7 +36,7 @@
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
         DisplayName="PortKill"
-        Description="Kill processes blocking TCP ports"
+        Description="This extension requires .NET. Kill processes blocking TCP ports directly from PowerToys Command Palette. Perfect for developers who need to quickly free up ports for local development servers, databases, or any application."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
